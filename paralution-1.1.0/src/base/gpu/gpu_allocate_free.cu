@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -39,7 +40,7 @@
 
 #include <cmath>
 
-#include <cuda.h>
+#include <hip/hip_runtime.h>
 
 namespace paralution {
 
@@ -57,7 +58,7 @@ void allocate_host(const int size, DataType **ptr) {
     
     //    *ptr = new DataType[size];
 
-    cudaMallocHost((void **)ptr, size*sizeof(DataType));
+    hipHostMalloc((void **)ptr, size*sizeof(DataType));
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     LOG_DEBUG(0, "allocate_host()",
@@ -77,7 +78,7 @@ void free_host(DataType **ptr) {
   assert(*ptr != NULL);
 
   //  delete[] *ptr;
-  cudaFreeHost(*ptr);
+  hipHostFree(*ptr);
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
   
   *ptr = NULL;
@@ -96,7 +97,7 @@ void allocate_gpu(const int size, DataType **ptr) {
 
     assert(*ptr == NULL);
     
-    cudaMalloc( (void **)ptr, size*sizeof(DataType));
+    hipMalloc( (void **)ptr, size*sizeof(DataType));
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     assert(*ptr != NULL);
@@ -112,7 +113,7 @@ void free_gpu(DataType **ptr) {
 
   assert(*ptr != NULL);
   
-  cudaFree(*ptr);
+  hipFree(*ptr);
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
   
   *ptr = NULL;
@@ -132,7 +133,7 @@ void set_to_zero_gpu(const int blocksize,
 
     assert(ptr != NULL);
 
-    cudaMemset(ptr, 0, size*sizeof(DataType));
+    hipMemset(ptr, 0, size*sizeof(DataType));
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     /*
@@ -144,7 +145,7 @@ void set_to_zero_gpu(const int blocksize,
     dim3 BlockSize(blocksize);
     dim3 GridSize(s / blocksize + 1);
 
-    kernel_set_to_zeros<DataType, int> <<<GridSize, BlockSize>>> (size, ptr);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_set_to_zeros<DataType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, ptr);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
     */
@@ -154,7 +155,7 @@ void set_to_zero_gpu(const int blocksize,
     dim3 BlockSize(blocksize);
     dim3 GridSize(size / blocksize + 1);
 
-    kernel_set_to_zeros<DataType, int> <<<GridSize, BlockSize>>> (size, ptr);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_set_to_zeros<DataType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, ptr);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
     */
@@ -184,7 +185,7 @@ void set_to_one_gpu(const int blocksize,
     dim3 BlockSize(blocksize);
     dim3 GridSize(s / blocksize + 1);
 
-    kernel_set_to_ones<DataType, int> <<<GridSize, BlockSize>>> (size, ptr);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_set_to_ones<DataType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, ptr);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 */
@@ -193,7 +194,7 @@ void set_to_one_gpu(const int blocksize,
     dim3 BlockSize(blocksize);
     dim3 GridSize(size / blocksize + 1);
 
-    kernel_set_to_ones<DataType, int> <<<GridSize, BlockSize>>> (size, ptr);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_set_to_ones<DataType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, ptr);
 
   }
 

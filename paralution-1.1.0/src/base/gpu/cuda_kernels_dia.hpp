@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com

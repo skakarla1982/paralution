@@ -49,8 +49,8 @@
 #include "gpu_matrix_ell.hpp"
 #include "gpu_matrix_dense.hpp"
 
-#include <cuda.h>
-#include <cublas_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipblas.h>
 
 namespace paralution {
 
@@ -64,19 +64,19 @@ bool paralution_init_gpu(void) {
   //  assert(_get_backend_descriptor()->GPU_dev == -1);
 
   // create a handle
-  _get_backend_descriptor()->GPU_cublas_handle = new cublasHandle_t;
-  _get_backend_descriptor()->GPU_cusparse_handle = new cusparseHandle_t;
+  _get_backend_descriptor()->GPU_cublas_handle = new hipblasHandle_t;
+  _get_backend_descriptor()->GPU_cusparse_handle = new hipsparseHandle_t;
 
   // get last cuda error (if any)
-  cudaGetLastError();
+  hipGetLastError();
 
-  cudaError_t cuda_status_t;
+  hipError_t cuda_status_t;
   int num_dev;
-  cudaGetDeviceCount(&num_dev);
-  cuda_status_t = cudaGetLastError();
+  hipGetDeviceCount(&num_dev);
+  cuda_status_t = hipGetLastError();
 
   // if querying for device count fails, fall back to host backend
-  if (cuda_status_t != cudaSuccess) {
+  if (cuda_status_t != hipSuccess) {
     LOG_INFO("Querying for GPU devices failed - falling back to host backend");
     return false;
   }
@@ -100,13 +100,13 @@ bool paralution_init_gpu(void) {
         dev = _get_backend_descriptor()->GPU_dev;
       }
 
-      cudaSetDevice(dev);
-      cuda_status_t = cudaGetLastError();
+      hipSetDevice(dev);
+      cuda_status_t = hipGetLastError();
 
-      if (cuda_status_t == cudaSuccess) {
+      if (cuda_status_t == hipSuccess) {
 
-        if ((cublasCreate(static_cast<cublasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle)) == CUBLAS_STATUS_SUCCESS) &&
-            (cusparseCreate(static_cast<cusparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle)) == CUSPARSE_STATUS_SUCCESS)) {
+        if ((hipblasCreate(static_cast<hipblasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle)) == HIPBLAS_STATUS_SUCCESS) &&
+            (hipsparseCreate(static_cast<hipsparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle)) == HIPSPARSE_STATUS_SUCCESS)) {
 
           _get_backend_descriptor()->GPU_dev = dev;
           break;
@@ -116,10 +116,10 @@ bool paralution_init_gpu(void) {
 
       }
 
-      if (cuda_status_t == cudaErrorDeviceAlreadyInUse)
+      if (cuda_status_t == hipErrorContextAlreadyInUse)
         LOG_INFO("GPU device " << dev << " is already in use");
 
-      if (cuda_status_t == cudaErrorInvalidDevice)
+      if (cuda_status_t == hipErrorInvalidDevice)
         LOG_INFO("GPU device " << dev << " is invalid NVIDIA GPU device");
 
     }
@@ -132,8 +132,8 @@ bool paralution_init_gpu(void) {
   }
 
 
-  struct cudaDeviceProp dev_prop;      
-  cudaGetDeviceProperties(&dev_prop, _get_backend_descriptor()->GPU_dev);
+  struct hipDeviceProp_t dev_prop;      
+  hipGetDeviceProperties(&dev_prop, _get_backend_descriptor()->GPU_dev);
 
   if (dev_prop.major < 2) {
     LOG_INFO("GPU device " << _get_backend_descriptor()->GPU_dev << " has low compute capability (min 2.0 is needed)");    
@@ -158,18 +158,18 @@ void paralution_stop_gpu(void) {
 
   if (_get_backend_descriptor()->accelerator) {
 
-    if (cublasDestroy(*(static_cast<cublasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle))) != CUBLAS_STATUS_SUCCESS) {
-      LOG_INFO("Error in cublasDestroy");
+    if (hipblasDestroy(*(static_cast<hipblasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle))) != HIPBLAS_STATUS_SUCCESS) {
+      LOG_INFO("Error in hipblasDestroy");
     }
 
-    if (cusparseDestroy(*(static_cast<cusparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle))) != CUSPARSE_STATUS_SUCCESS) {
-      LOG_INFO("Error in cusparseDestroy");
+    if (hipsparseDestroy(*(static_cast<hipsparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle))) != HIPSPARSE_STATUS_SUCCESS) {
+      LOG_INFO("Error in hipsparseDestroy");
     }
 
   }
 
-    delete (static_cast<cublasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle));
-    delete (static_cast<cusparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle));
+    delete (static_cast<hipblasHandle_t*>(_get_backend_descriptor()->GPU_cublas_handle));
+    delete (static_cast<hipsparseHandle_t*>(_get_backend_descriptor()->GPU_cusparse_handle));
 
     _get_backend_descriptor()->GPU_cublas_handle = NULL; 
     _get_backend_descriptor()->GPU_cusparse_handle = NULL;
@@ -185,8 +185,8 @@ void paralution_info_gpu(const struct Paralution_Backend_Descriptor backend_desc
 
     int num_dev;
 
-    cudaGetDeviceCount(&num_dev);
-    cudaGetLastError(); 
+    hipGetDeviceCount(&num_dev);
+    hipGetLastError(); 
     //  CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     //    LOG_INFO("Number of GPU devices in the sytem: " << num_dev);    
@@ -202,8 +202,8 @@ void paralution_info_gpu(const struct Paralution_Backend_Descriptor backend_desc
 
     for (int dev = 0; dev < num_dev; dev++) {
 
-      struct cudaDeviceProp dev_prop;      
-      cudaGetDeviceProperties(&dev_prop, dev);
+      struct hipDeviceProp_t dev_prop;      
+      hipGetDeviceProperties(&dev_prop, dev);
      
       LOG_INFO("------------------------------------------------");        
       LOG_INFO("Device number: "               << dev);
@@ -323,7 +323,7 @@ AcceleratorVector<ValueType>* _paralution_init_base_gpu_vector(const struct Para
 
 void paralution_gpu_sync(void) {
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
 }

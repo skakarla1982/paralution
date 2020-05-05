@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -42,63 +43,63 @@
 
 #include <stdlib.h>
 
-#include <cuda.h>
-#include <cublas_v2.h>
-#include <cusparse_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipblas.h>
+#include <hipsparse.h>
 
-#define CUBLAS_HANDLE(handle) *static_cast<cublasHandle_t*>(handle)
-#define CUSPARSE_HANDLE(handle) *static_cast<cusparseHandle_t*>(handle)
+#define CUBLAS_HANDLE(handle) *static_cast<hipblasHandle_t*>(handle)
+#define CUSPARSE_HANDLE(handle) *static_cast<hipsparseHandle_t*>(handle)
 
 #define CHECK_CUDA_ERROR(file, line) {                                  \
-    cudaError_t err_t;                                                  \
-    if ((err_t = cudaGetLastError() ) != cudaSuccess) {                 \
-      LOG_INFO("Cuda error: " << cudaGetErrorString(err_t));            \
+    hipError_t err_t;                                                  \
+    if ((err_t = hipGetLastError() ) != hipSuccess) {                 \
+      LOG_INFO("Cuda error: " << hipGetErrorString(err_t));            \
       LOG_INFO("File: " << file << "; line: " << line);                 \
       exit(1);                                                          \
     }                                                                   \
   }   
 
 #define CHECK_CUBLAS_ERROR(stat_t, file, line) {                        \
-  if (stat_t  != CUBLAS_STATUS_SUCCESS) {                               \
+  if (stat_t  != HIPBLAS_STATUS_SUCCESS) {                               \
   LOG_INFO("Cublas error!");                                            \
-  if (stat_t == CUBLAS_STATUS_NOT_INITIALIZED)                          \
-    LOG_INFO("CUBLAS_STATUS_NOT_INITIALIZED");                          \
-  if (stat_t == CUBLAS_STATUS_ALLOC_FAILED)                             \
-    LOG_INFO("CUBLAS_STATUS_ALLOC_FAILED");                             \
-  if (stat_t == CUBLAS_STATUS_INVALID_VALUE)                            \
-    LOG_INFO("CUBLAS_STATUS_INVALID_VALUE");                            \
-  if (stat_t == CUBLAS_STATUS_ARCH_MISMATCH)                            \
-    LOG_INFO("CUBLAS_STATUS_ARCH_MISMATCH");                            \
-  if (stat_t == CUBLAS_STATUS_MAPPING_ERROR)                            \
-    LOG_INFO("CUBLAS_STATUS_MAPPING_ERROR");                            \
-  if (stat_t == CUBLAS_STATUS_EXECUTION_FAILED)                         \
-    LOG_INFO("CUBLAS_STATUS_EXECUTION_FAILED");                         \
-  if (stat_t == CUBLAS_STATUS_INTERNAL_ERROR)                           \
-    LOG_INFO("CUBLAS_STATUS_INTERNAL_ERROR");                           \
+  if (stat_t == HIPBLAS_STATUS_NOT_INITIALIZED)                          \
+    LOG_INFO("HIPBLAS_STATUS_NOT_INITIALIZED");                          \
+  if (stat_t == HIPBLAS_STATUS_ALLOC_FAILED)                             \
+    LOG_INFO("HIPBLAS_STATUS_ALLOC_FAILED");                             \
+  if (stat_t == HIPBLAS_STATUS_INVALID_VALUE)                            \
+    LOG_INFO("HIPBLAS_STATUS_INVALID_VALUE");                            \
+  if (stat_t == HIPBLAS_STATUS_ARCH_MISMATCH)                            \
+    LOG_INFO("HIPBLAS_STATUS_ARCH_MISMATCH");                            \
+  if (stat_t == HIPBLAS_STATUS_MAPPING_ERROR)                            \
+    LOG_INFO("HIPBLAS_STATUS_MAPPING_ERROR");                            \
+  if (stat_t == HIPBLAS_STATUS_EXECUTION_FAILED)                         \
+    LOG_INFO("HIPBLAS_STATUS_EXECUTION_FAILED");                         \
+  if (stat_t == HIPBLAS_STATUS_INTERNAL_ERROR)                           \
+    LOG_INFO("HIPBLAS_STATUS_INTERNAL_ERROR");                           \
   LOG_INFO("File: " << file << "; line: " << line);                     \
   exit(1);                                                              \
   }                                                                     \
   }   
 
 #define CHECK_CUSPARSE_ERROR(stat_t, file, line) {                      \
-  if (stat_t  != CUSPARSE_STATUS_SUCCESS) {                             \
+  if (stat_t  != HIPSPARSE_STATUS_SUCCESS) {                             \
   LOG_INFO("Cusparse error!");                                          \
-  if (stat_t == CUSPARSE_STATUS_NOT_INITIALIZED)                        \
-    LOG_INFO("CUSPARSE_STATUS_NOT_INITIALIZED");                        \
-  if (stat_t == CUSPARSE_STATUS_ALLOC_FAILED)                           \
-    LOG_INFO("CUSPARSE_STATUS_ALLOC_FAILED");                           \
-  if (stat_t == CUSPARSE_STATUS_INVALID_VALUE)                          \
-    LOG_INFO("CUSPARSE_STATUS_INVALID_VALUE");                          \
-  if (stat_t == CUSPARSE_STATUS_ARCH_MISMATCH)                          \
-    LOG_INFO("CUSPARSE_STATUS_ARCH_MISMATCH");                          \
-  if (stat_t == CUSPARSE_STATUS_MAPPING_ERROR)                          \
-    LOG_INFO("CUSPARSE_STATUS_MAPPING_ERROR");                          \
-  if (stat_t == CUSPARSE_STATUS_EXECUTION_FAILED)                       \
-    LOG_INFO("CUSPARSE_STATUS_EXECUTION_FAILED");                       \
-  if (stat_t == CUSPARSE_STATUS_INTERNAL_ERROR)                         \
-    LOG_INFO("CUSPARSE_STATUS_INTERNAL_ERROR");                         \
-  if (stat_t == CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED)              \
-    LOG_INFO("CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED");              \
+  if (stat_t == HIPSPARSE_STATUS_NOT_INITIALIZED)                        \
+    LOG_INFO("HIPSPARSE_STATUS_NOT_INITIALIZED");                        \
+  if (stat_t == HIPSPARSE_STATUS_ALLOC_FAILED)                           \
+    LOG_INFO("HIPSPARSE_STATUS_ALLOC_FAILED");                           \
+  if (stat_t == HIPSPARSE_STATUS_INVALID_VALUE)                          \
+    LOG_INFO("HIPSPARSE_STATUS_INVALID_VALUE");                          \
+  if (stat_t == HIPSPARSE_STATUS_ARCH_MISMATCH)                          \
+    LOG_INFO("HIPSPARSE_STATUS_ARCH_MISMATCH");                          \
+  if (stat_t == HIPSPARSE_STATUS_MAPPING_ERROR)                          \
+    LOG_INFO("HIPSPARSE_STATUS_MAPPING_ERROR");                          \
+  if (stat_t == HIPSPARSE_STATUS_EXECUTION_FAILED)                       \
+    LOG_INFO("HIPSPARSE_STATUS_EXECUTION_FAILED");                       \
+  if (stat_t == HIPSPARSE_STATUS_INTERNAL_ERROR)                         \
+    LOG_INFO("HIPSPARSE_STATUS_INTERNAL_ERROR");                         \
+  if (stat_t == HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED)              \
+    LOG_INFO("HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED");              \
   LOG_INFO("File: " << file << "; line: " << line);                     \
   exit(1);                                                              \
   }                                                                     \
@@ -111,22 +112,22 @@ bool cum_sum( IndexType*  dst,
               const IndexType*  src,
               const IndexType   numElems) {
   
-  cudaMemset(dst, 0, (numElems+1)*sizeof(IndexType));
+  hipMemset(dst, 0, (numElems+1)*sizeof(IndexType));
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
   
   IndexType* d_temp = NULL;
   allocate_gpu<IndexType>(numElems+1, &d_temp);
   
-  cudaMemset(d_temp, 0, (numElems+1)*sizeof(IndexType));
+  hipMemset(d_temp, 0, (numElems+1)*sizeof(IndexType));
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
   
-  kernel_red_partial_sum <IndexType, BLOCK_SIZE> <<< numElems/BLOCK_SIZE+1, BLOCK_SIZE>>>(dst+1, src, numElems);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_red_partial_sum<IndexType, BLOCK_SIZE>), dim3(numElems/BLOCK_SIZE+1), dim3(BLOCK_SIZE), 0, 0, dst+1, src, numElems);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   
-  kernel_red_recurse <IndexType> <<< numElems/(BLOCK_SIZE*BLOCK_SIZE)+1, BLOCK_SIZE>>>(d_temp, dst+BLOCK_SIZE, BLOCK_SIZE, (numElems+1));
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_red_recurse<IndexType>), dim3(numElems/(BLOCK_SIZE*BLOCK_SIZE)+1), dim3(BLOCK_SIZE), 0, 0, d_temp, dst+BLOCK_SIZE, BLOCK_SIZE, (numElems+1));
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   
-  kernel_red_extrapolate<IndexType> <<< numElems/(BLOCK_SIZE*BLOCK_SIZE)+1, BLOCK_SIZE>>>(dst+1, d_temp, src, numElems);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_red_extrapolate<IndexType>), dim3(numElems/(BLOCK_SIZE*BLOCK_SIZE)+1), dim3(BLOCK_SIZE), 0, 0, dst+1, d_temp, src, numElems);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   free_gpu<int>(&d_temp);
   

@@ -37,7 +37,7 @@
 #include <iostream>
 
 // When CUDA backend is available the host memory allocation
-// can use cudaMallocHost() function for pinned memory
+// can use hipHostMalloc() function for pinned memory
 // thus the memory transfers to the GPU are faster
 // and this also enables the async transfers.
 // Uncomment to use pinned memory

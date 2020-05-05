@@ -36,14 +36,14 @@
 
 namespace paralution {
 
-cusparseStatus_t __cusparseXcsrgeam__(cusparseHandle_t handle, int m, int n,
+hipsparseStatus_t __cusparseXcsrgeam__(hipsparseHandle_t handle, int m, int n,
                                       const double *alpha,
-                                      const cusparseMatDescr_t descrA, int nnzA,
+                                      const hipsparseMatDescr_t descrA, int nnzA,
                                       const double *csrValA, const int *csrRowPtrA, const int *csrColIndA,
                                       const double *beta,
-                                      const cusparseMatDescr_t descrB, int nnzB,
+                                      const hipsparseMatDescr_t descrB, int nnzB,
                                       const double *csrValB, const int *csrRowPtrB, const int *csrColIndB,
-                                      const cusparseMatDescr_t descrC,
+                                      const hipsparseMatDescr_t descrC,
                                       double *csrValC, int *csrRowPtrC, int *csrColIndC) {
 
   return cusparseDcsrgeam(handle, 
@@ -58,14 +58,14 @@ cusparseStatus_t __cusparseXcsrgeam__(cusparseHandle_t handle, int m, int n,
                           csrValC, csrRowPtrC, csrColIndC);
 }
 
-cusparseStatus_t __cusparseXcsrgeam__(cusparseHandle_t handle, int m, int n,
+hipsparseStatus_t __cusparseXcsrgeam__(hipsparseHandle_t handle, int m, int n,
                                       const float *alpha,
-                                      const cusparseMatDescr_t descrA, int nnzA,
+                                      const hipsparseMatDescr_t descrA, int nnzA,
                                       const float *csrValA, const int *csrRowPtrA, const int *csrColIndA,
                                       const float *beta,
-                                      const cusparseMatDescr_t descrB, int nnzB,
+                                      const hipsparseMatDescr_t descrB, int nnzB,
                                       const float *csrValB, const int *csrRowPtrB, const int *csrColIndB,
-                                      const cusparseMatDescr_t descrC,
+                                      const hipsparseMatDescr_t descrC,
                                       float *csrValC, int *csrRowPtrC, int *csrColIndC) {
   return cusparseScsrgeam(handle, 
                           m, n,
@@ -80,20 +80,20 @@ cusparseStatus_t __cusparseXcsrgeam__(cusparseHandle_t handle, int m, int n,
 
 }
 
-cusparseStatus_t  __cusparseXcsrgemm__(cusparseHandle_t handle,
-                                       cusparseOperation_t transA, cusparseOperation_t transB,
+hipsparseStatus_t  __cusparseXcsrgemm__(hipsparseHandle_t handle,
+                                       hipsparseOperation_t transA, hipsparseOperation_t transB,
                                        int m, int n, int k,
-                                       const cusparseMatDescr_t descrA, const int nnzA,
+                                       const hipsparseMatDescr_t descrA, const int nnzA,
                                        const double *csrValA,
                                        const int *csrRowPtrA, const int *csrColIndA,
-                                       const cusparseMatDescr_t descrB, const int nnzB,                            
+                                       const hipsparseMatDescr_t descrB, const int nnzB,                            
                                        const double *csrValB, 
                                        const int *csrRowPtrB, const int *csrColIndB,
-                                       const cusparseMatDescr_t descrC,
+                                       const hipsparseMatDescr_t descrC,
                                        double *csrValC,
                                        const int *csrRowPtrC, int *csrColIndC ) {
   
-  return cusparseDcsrgemm(handle,
+  return hipsparseDcsrgemm(handle,
                           transA, transB,
                           m, n, k,
                           descrA, nnzA,
@@ -108,20 +108,20 @@ cusparseStatus_t  __cusparseXcsrgemm__(cusparseHandle_t handle,
 
 }
 
-cusparseStatus_t  __cusparseXcsrgemm__(cusparseHandle_t handle,
-                                       cusparseOperation_t transA, cusparseOperation_t transB,
+hipsparseStatus_t  __cusparseXcsrgemm__(hipsparseHandle_t handle,
+                                       hipsparseOperation_t transA, hipsparseOperation_t transB,
                                        int m, int n, int k,
-                                       const cusparseMatDescr_t descrA, const int nnzA,
+                                       const hipsparseMatDescr_t descrA, const int nnzA,
                                        const float *csrValA,
                                        const int *csrRowPtrA, const int *csrColIndA,
-                                       const cusparseMatDescr_t descrB, const int nnzB,                            
+                                       const hipsparseMatDescr_t descrB, const int nnzB,                            
                                        const float *csrValB, 
                                        const int *csrRowPtrB, const int *csrColIndB,
-                                       const cusparseMatDescr_t descrC,
+                                       const hipsparseMatDescr_t descrC,
                                        float *csrValC,
                                        const int *csrRowPtrC, int *csrColIndC ) {
 
-  return cusparseScsrgemm(handle,
+  return hipsparseScsrgemm(handle,
                           transA, transB,
                           m, n, k,
                           descrA, nnzA,

@@ -72,9 +72,9 @@ struct Paralution_Backend_Descriptor {
 
   // GPU section
   // gpu handles
-  // cublasHandle_t casted in void **
+  // hipblasHandle_t casted in void **
   void *GPU_cublas_handle;
-  // cusparseHandle_t casted in void **
+  // hipsparseHandle_t casted in void **
   void *GPU_cusparse_handle;
 
   int GPU_dev;

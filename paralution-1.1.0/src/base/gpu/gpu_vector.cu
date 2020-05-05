@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -44,8 +45,8 @@
 #include "cuda_kernels_vector.hpp"
 #include "gpu_allocate_free.hpp"
 
-#include <cuda.h>
-#include <cublas_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipblas.h>
 
 namespace paralution {
 
@@ -115,7 +116,7 @@ void GPUAcceleratorVector<ValueType>::SetDataPtr(ValueType **ptr, const int size
   assert(*ptr != NULL);
   assert(size > 0);
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
 
   this->vec_ = *ptr;
   this->size_ = size;
@@ -127,7 +128,7 @@ void GPUAcceleratorVector<ValueType>::LeaveDataPtr(ValueType **ptr) {
 
   assert(this->get_size() > 0);
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
   *ptr = this->vec_;
   this->vec_ = NULL;
 
@@ -164,8 +165,8 @@ void GPUAcceleratorVector<ValueType>::CopyFromHost(const HostVector<ValueType> &
     if (this->get_size() >0) {
       
       
-      cublasStatus_t stat_t;
-      stat_t = cublasSetVector(this->get_size(), sizeof(ValueType),
+      hipblasStatus_t stat_t;
+      stat_t = hipblasSetVector(this->get_size(), sizeof(ValueType),
                                cast_vec->vec_, // src
                                1,
                                this->vec_, // dst
@@ -200,8 +201,8 @@ void GPUAcceleratorVector<ValueType>::CopyToHost(HostVector<ValueType> *dst) con
 
     if (this->get_size() >0) {
 
-      cublasStatus_t stat_t;
-      stat_t = cublasGetVector(this->get_size(), sizeof(ValueType),
+      hipblasStatus_t stat_t;
+      stat_t = hipblasGetVector(this->get_size(), sizeof(ValueType),
                                this->vec_, // src
                                1,
                                cast_vec->vec_, // dst
@@ -235,10 +236,10 @@ void GPUAcceleratorVector<ValueType>::CopyFromHostAsync(const HostVector<ValueTy
 
     if (this->get_size() >0) {
 
-      cudaMemcpyAsync(this->vec_,     // dst
+      hipMemcpyAsync(this->vec_,     // dst
                       cast_vec->vec_, // src
                       this->get_size()*sizeof(ValueType), // size
-                      cudaMemcpyHostToDevice);
+                      hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
     }
@@ -270,10 +271,10 @@ void GPUAcceleratorVector<ValueType>::CopyToHostAsync(HostVector<ValueType> *dst
 
     if (this->get_size() >0) {
 
-      cudaMemcpyAsync(cast_vec->vec_,  // dst
+      hipMemcpyAsync(cast_vec->vec_,  // dst
                       this->vec_,      // src
                       this->get_size()*sizeof(ValueType), // size
-                      cudaMemcpyDeviceToHost);
+                      hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
 
 
@@ -311,10 +312,10 @@ void GPUAcceleratorVector<ValueType>::CopyFrom(const BaseVector<ValueType> &src)
 
         if (this->get_size() >0) {
 
-          cudaMemcpy(this->vec_,         // dst
+          hipMemcpy(this->vec_,         // dst
                      gpu_cast_vec->vec_, // src
                      this->get_size()*sizeof(ValueType), // size
-                     cudaMemcpyDeviceToDevice);
+                     hipMemcpyDeviceToDevice);
           CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         }
 
@@ -361,10 +362,10 @@ void GPUAcceleratorVector<ValueType>::CopyFromAsync(const BaseVector<ValueType> 
 
         if (this->get_size() >0) {
 
-          cudaMemcpy(this->vec_,         // dst
+          hipMemcpy(this->vec_,         // dst
                      gpu_cast_vec->vec_, // src
                      this->get_size()*sizeof(ValueType), // size
-                     cudaMemcpyDeviceToDevice);
+                     hipMemcpyDeviceToDevice);
           CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         }
 
@@ -413,7 +414,7 @@ void GPUAcceleratorVector<ValueType>::CopyFrom(const BaseVector<ValueType> &src,
   dim3 BlockSize(this->local_backend_.GPU_block_size);
   dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-  kernel_copy_offset_from<ValueType, int> <<<GridSize, BlockSize>>> (size, src_offset, dst_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_copy_offset_from<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, src_offset, dst_offset,
                                                                      cast_src->vec_, this->vec_);
 
   CHECK_CUDA_ERROR(__FILE__, __LINE__);      
@@ -438,10 +439,10 @@ void GPUAcceleratorVector<ValueType>::CopyTo(BaseVector<ValueType> *dst) const{
 
         if (this->get_size() >0) {
 
-          cudaMemcpy(gpu_cast_vec->vec_, // dst
+          hipMemcpy(gpu_cast_vec->vec_, // dst
                      this->vec_,         // src
                      this->get_size()*sizeof(ValueType), // size
-                     cudaMemcpyDeviceToDevice);
+                     hipMemcpyDeviceToDevice);
           CHECK_CUDA_ERROR(__FILE__, __LINE__);      
         }
       }
@@ -486,10 +487,10 @@ void GPUAcceleratorVector<ValueType>::CopyToAsync(BaseVector<ValueType> *dst) co
 
         if (this->get_size() >0) {
 
-          cudaMemcpy(gpu_cast_vec->vec_, // dst
+          hipMemcpy(gpu_cast_vec->vec_, // dst
                      this->vec_,         // src
                      this->get_size()*sizeof(ValueType), // size
-                     cudaMemcpyDeviceToDevice);
+                     hipMemcpyDeviceToDevice);
           CHECK_CUDA_ERROR(__FILE__, __LINE__);      
         }
       }
@@ -534,7 +535,7 @@ void GPUAcceleratorVector<ValueType>::CopyFromFloat(const BaseVector<float> &src
       dim3 BlockSize(this->local_backend_.GPU_block_size);
       dim3 GridSize(this->get_size() / this->local_backend_.GPU_block_size + 1);
       
-      kernel_copy_from_float<ValueType, int> <<<GridSize, BlockSize>>>(this->get_size(), gpu_cast_vec->vec_, this->vec_);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_copy_from_float<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_size(), gpu_cast_vec->vec_, this->vec_);
       
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
@@ -568,7 +569,7 @@ void GPUAcceleratorVector<ValueType>::CopyFromDouble(const BaseVector<double> &s
       dim3 BlockSize(this->local_backend_.GPU_block_size);
       dim3 GridSize(this->get_size() / this->local_backend_.GPU_block_size + 1);
       
-      kernel_copy_from_double<ValueType, int> <<<GridSize, BlockSize>>>(this->get_size(), gpu_cast_vec->vec_, this->vec_);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_copy_from_double<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_size(), gpu_cast_vec->vec_, this->vec_);
       
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
@@ -587,10 +588,10 @@ void GPUAcceleratorVector<ValueType>::CopyFromData(const ValueType *data) {
 
   if (this->get_size() > 0) {
 
-    cudaMemcpy(this->vec_,                         // dst
+    hipMemcpy(this->vec_,                         // dst
                data,                               // src
                this->get_size()*sizeof(ValueType), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -602,10 +603,10 @@ void GPUAcceleratorVector<ValueType>::CopyToData(ValueType *data) const {
 
   if (this->get_size() > 0) {
 
-    cudaMemcpy(data,                               // dst
+    hipMemcpy(data,                               // dst
                this->vec_,                         // src
                this->get_size()*sizeof(ValueType), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -653,9 +654,9 @@ void GPUAcceleratorVector<double>::AddScale(const BaseVector<double> &x, const d
     const GPUAcceleratorVector<double> *cast_x = dynamic_cast<const GPUAcceleratorVector<double>*> (&x);
     assert(cast_x != NULL);
     
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
     
-    stat_t = cublasDaxpy(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), 
+    stat_t = hipblasDaxpy(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), 
                          this->get_size(), 
                          &alpha, 
                          cast_x->vec_, 1,
@@ -676,9 +677,9 @@ void GPUAcceleratorVector<float>::AddScale(const BaseVector<float> &x, const flo
     const GPUAcceleratorVector<float> *cast_x = dynamic_cast<const GPUAcceleratorVector<float>*> (&x);
     assert(cast_x != NULL);
     
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
     
-    stat_t = cublasSaxpy(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), 
+    stat_t = hipblasSaxpy(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), 
                          this->get_size(), 
                          &alpha, 
                          cast_x->vec_, 1,
@@ -711,7 +712,7 @@ void GPUAcceleratorVector<ValueType>::ScaleAdd(const ValueType alpha, const Base
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_scaleadd<ValueType, int> <<<GridSize, BlockSize>>> (size, alpha, cast_x->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_scaleadd<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, alpha, cast_x->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -733,7 +734,7 @@ void GPUAcceleratorVector<ValueType>::ScaleAddScale(const ValueType alpha, const
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_scaleaddscale<ValueType, int> <<<GridSize, BlockSize>>> (size, alpha, beta, cast_x->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_scaleaddscale<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, alpha, beta, cast_x->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -759,7 +760,7 @@ void GPUAcceleratorVector<ValueType>::ScaleAddScale(const ValueType alpha, const
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_scaleaddscale_offset<ValueType, int> <<<GridSize, BlockSize>>> (size, src_offset, dst_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_scaleaddscale_offset<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, src_offset, dst_offset,
                                                                            alpha, beta, cast_x->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -787,7 +788,7 @@ void GPUAcceleratorVector<ValueType>::ScaleAdd2(const ValueType alpha, const Bas
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_scaleadd2<ValueType, int> <<<GridSize, BlockSize>>> (size, alpha, beta, gamma, cast_x->vec_, cast_y->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_scaleadd2<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, alpha, beta, gamma, cast_x->vec_, cast_y->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -800,9 +801,9 @@ void GPUAcceleratorVector<double>::Scale(const double alpha) {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasDscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasDscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(), &alpha,
                          this->vec_, 1);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -816,9 +817,9 @@ void GPUAcceleratorVector<float>::Scale(const float alpha) {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasSscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasSscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(), &alpha,
                          this->vec_, 1);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -855,9 +856,9 @@ double GPUAcceleratorVector<double>::Dot(const BaseVector<double> &x) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasDdot(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasDdot(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                         this->get_size(),
                         this->vec_, 1,
                         cast_x->vec_, 1, &res);
@@ -881,9 +882,9 @@ float GPUAcceleratorVector<float>::Dot(const BaseVector<float> &x) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasSdot(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasSdot(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                         this->get_size(),
                         this->vec_, 1,
                         cast_x->vec_, 1, &res);
@@ -925,9 +926,9 @@ double GPUAcceleratorVector<double>::Norm(void) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasDnrm2(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasDnrm2(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(),
                          this->vec_, 1, &res);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -945,9 +946,9 @@ float GPUAcceleratorVector<float>::Norm(void) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasSnrm2(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasSnrm2(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(),
                          this->vec_, 1, &res);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -990,7 +991,7 @@ double GPUAcceleratorVector<double>::Reduce(void) const {
     LOCAL_SIZE = GROUP_SIZE / this->local_backend_.GPU_block_size;
     
 
-    kernel_reduce<double, int, 256> <<<GridSize, BlockSize>>> (size,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_reduce<double, int, 256>), dim3(GridSize), dim3(BlockSize), 0, 0, size,
                                                                this->vec_,
                                                                d_buffer,
                                                                GROUP_SIZE,
@@ -1000,10 +1001,10 @@ double GPUAcceleratorVector<double>::Reduce(void) const {
     FinalReduceSize = this->local_backend_.GPU_warp * 4;
     allocate_host(FinalReduceSize, &h_buffer);
 
-    cudaMemcpy(h_buffer, // dst
+    hipMemcpy(h_buffer, // dst
                d_buffer, // src
                FinalReduceSize*sizeof(double), // size
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     free_gpu<double>(&d_buffer);
@@ -1043,7 +1044,7 @@ float GPUAcceleratorVector<float>::Reduce(void) const {
                  / this->local_backend_.GPU_block_size ) + 1 ) * this->local_backend_.GPU_block_size;
     LOCAL_SIZE = GROUP_SIZE / this->local_backend_.GPU_block_size;
     
-    kernel_reduce<float, int, 256> <<<GridSize, BlockSize>>> (size,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_reduce<float, int, 256>), dim3(GridSize), dim3(BlockSize), 0, 0, size,
                                                               this->vec_,
                                                               d_buffer,
                                                               GROUP_SIZE,
@@ -1053,10 +1054,10 @@ float GPUAcceleratorVector<float>::Reduce(void) const {
     FinalReduceSize = this->local_backend_.GPU_warp * 4;
     allocate_host(FinalReduceSize, &h_buffer);
 
-    cudaMemcpy(h_buffer,         // dst
+    hipMemcpy(h_buffer,         // dst
                d_buffer, // src
                FinalReduceSize*sizeof(float), // size
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__); 
 
     free_gpu<float>(&d_buffer);
@@ -1088,9 +1089,9 @@ double GPUAcceleratorVector<double>::Asum(void) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasDasum(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasDasum(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(),
                          this->vec_, 1,
                          &res);
@@ -1109,9 +1110,9 @@ float GPUAcceleratorVector<float>::Asum(void) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasSasum(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasSasum(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_size(),
                          this->vec_, 1,
                          &res);
@@ -1139,9 +1140,9 @@ int GPUAcceleratorVector<double>::Amax(double &value) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasIdamax(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasIdamax(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                           this->get_size(),
                           this->vec_, 1, &index);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -1149,10 +1150,10 @@ int GPUAcceleratorVector<double>::Amax(double &value) const {
     // cublas returns 1-based indexing
     --index;
 
-    cudaMemcpy(&value,
+    hipMemcpy(&value,
                this->vec_+index,
                sizeof(double),
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -1170,9 +1171,9 @@ int GPUAcceleratorVector<float>::Amax(float &value) const {
 
   if (this->get_size() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasIsamax(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasIsamax(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                           this->get_size(),
                           this->vec_, 1, &index);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -1180,10 +1181,10 @@ int GPUAcceleratorVector<float>::Amax(float &value) const {
     // cublas returns 1-based indexing
     --index;
 
-    cudaMemcpy(&value,
+    hipMemcpy(&value,
                this->vec_+index,
                sizeof(float),
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -1215,7 +1216,7 @@ void GPUAcceleratorVector<ValueType>::PointWiseMult(const BaseVector<ValueType> 
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_pointwisemult<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_x->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_pointwisemult<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_x->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -1240,7 +1241,7 @@ void GPUAcceleratorVector<ValueType>::PointWiseMult(const BaseVector<ValueType> 
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_pointwisemult2<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_x->vec_, cast_y->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_pointwisemult2<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_x->vec_, cast_y->vec_, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -1268,7 +1269,7 @@ void GPUAcceleratorVector<ValueType>::Permute(const BaseVector<int> &permutation
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
     
     //    this->vec_[ cast_perm->vec_[i] ] = vec_tmp.vec_[i];  
-    kernel_permute<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_perm->vec_, vec_tmp.vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_perm->vec_, vec_tmp.vec_, this->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
   }
@@ -1295,7 +1296,7 @@ void GPUAcceleratorVector<ValueType>::PermuteBackward(const BaseVector<int> &per
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
     
     //    this->vec_[i] = vec_tmp.vec_[ cast_perm->vec_[i] ];
-    kernel_permute_backward<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_perm->vec_, vec_tmp.vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_backward<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_perm->vec_, vec_tmp.vec_, this->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
   }
@@ -1323,7 +1324,7 @@ void GPUAcceleratorVector<ValueType>::CopyFromPermute(const BaseVector<ValueType
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
     
     //    this->vec_[ cast_perm->vec_[i] ] = cast_vec->vec_[i];
-    kernel_permute<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_perm->vec_, cast_vec->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_perm->vec_, cast_vec->vec_, this->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
   }
@@ -1352,7 +1353,7 @@ void GPUAcceleratorVector<ValueType>::CopyFromPermuteBackward(const BaseVector<V
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
     
     //    this->vec_[i] = cast_vec->vec_[ cast_perm->vec_[i] ];
-    kernel_permute_backward<ValueType, int> <<<GridSize, BlockSize>>> (size, cast_perm->vec_, cast_vec->vec_, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_backward<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, cast_perm->vec_, cast_vec->vec_, this->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
   }
@@ -1368,7 +1369,7 @@ void GPUAcceleratorVector<double>::Power(const double power) {
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_powerd<int> <<<GridSize, BlockSize>>> (size, power, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_powerd<int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, power, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
@@ -1385,7 +1386,7 @@ void GPUAcceleratorVector<float>::Power(const double power) {
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(size / this->local_backend_.GPU_block_size + 1);
 
-    kernel_powerf<int> <<<GridSize, BlockSize>>> (size, power, this->vec_);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_powerf<int>), dim3(GridSize), dim3(BlockSize), 0, 0, size, power, this->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 

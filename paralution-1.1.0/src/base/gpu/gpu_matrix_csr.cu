@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -55,8 +56,8 @@
 #include "gpu_allocate_free.hpp"
 #include "../matrix_formats_ind.hpp"
 
-#include <cuda.h>
-#include <cusparse_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipsparse.h>
 
 namespace paralution {
 
@@ -92,15 +93,15 @@ GPUAcceleratorMatrixCSR<ValueType>::GPUAcceleratorMatrixCSR(const Paralution_Bac
 
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
   
-  stat_t = cusparseCreateMatDescr(&this->mat_descr_);
+  stat_t = hipsparseCreateMatDescr(&this->mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
   
-  stat_t = cusparseSetMatIndexBase(this->mat_descr_, CUSPARSE_INDEX_BASE_ZERO);
+  stat_t = hipsparseSetMatIndexBase(this->mat_descr_, HIPSPARSE_INDEX_BASE_ZERO);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
   
-  stat_t = cusparseSetMatType(this->mat_descr_, CUSPARSE_MATRIX_TYPE_GENERAL);
+  stat_t = hipsparseSetMatType(this->mat_descr_, HIPSPARSE_MATRIX_TYPE_GENERAL);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
 }
@@ -113,9 +114,9 @@ GPUAcceleratorMatrixCSR<ValueType>::~GPUAcceleratorMatrixCSR() {
 
   this->Clear();
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
-  stat_t = cusparseDestroyMatDescr(this->mat_descr_);
+  stat_t = hipsparseDestroyMatDescr(this->mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
 }
@@ -179,7 +180,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::SetDataPtrCSR(int **row_offset, int **c
   this->ncol_ = ncol;
   this->nnz_  = nnz;
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
 
   this->mat_.row_offset = *row_offset;
   this->mat_.col = *col;
@@ -194,7 +195,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LeaveDataPtrCSR(int **row_offset, int *
   assert(this->get_ncol() > 0);
   assert(this->get_nnz() > 0);
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
 
   // see free_host function for details
   *row_offset = this->mat_.row_offset;
@@ -264,22 +265,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFromHost(const HostMatrix<ValueType
   
     if (this->get_nnz() > 0) {
 
-      cudaMemcpy(this->mat_.row_offset,     // dst
+      hipMemcpy(this->mat_.row_offset,     // dst
                  cast_mat->mat_.row_offset, // src
                  (this->get_nrow()+1)*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.col,     // dst
+      hipMemcpy(this->mat_.col,     // dst
                  cast_mat->mat_.col, // src
                  this->get_nnz()*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.val,     // dst
+      hipMemcpy(this->mat_.val,     // dst
                  cast_mat->mat_.val, // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyHostToDevice);    
+                 hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -314,22 +315,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFromHostAsync(const HostMatrix<Valu
   
     if (this->get_nnz() > 0) {
 
-      cudaMemcpyAsync(this->mat_.row_offset,     // dst
+      hipMemcpyAsync(this->mat_.row_offset,     // dst
                  cast_mat->mat_.row_offset, // src
                  (this->get_nrow()+1)*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(this->mat_.col,     // dst
+      hipMemcpyAsync(this->mat_.col,     // dst
                  cast_mat->mat_.col, // src
                  this->get_nnz()*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(this->mat_.val,     // dst
+      hipMemcpyAsync(this->mat_.val,     // dst
                  cast_mat->mat_.val, // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyHostToDevice);    
+                 hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -366,22 +367,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyToHost(HostMatrix<ValueType> *dst) 
    
     if (this->get_nnz() > 0) {
 
-      cudaMemcpy(cast_mat->mat_.row_offset, // dst
+      hipMemcpy(cast_mat->mat_.row_offset, // dst
                  this->mat_.row_offset,     // src
                  (this->get_nrow()+1)*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(cast_mat->mat_.col, // dst
+      hipMemcpy(cast_mat->mat_.col, // dst
                  this->mat_.col,     // src
                  this->get_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(cast_mat->mat_.val, // dst
+      hipMemcpy(cast_mat->mat_.val, // dst
                  this->mat_.val,     // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToHost);    
+                 hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
@@ -419,22 +420,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyToHostAsync(HostMatrix<ValueType> *
    
     if (this->get_nnz() > 0) {
 
-      cudaMemcpyAsync(cast_mat->mat_.row_offset, // dst
+      hipMemcpyAsync(cast_mat->mat_.row_offset, // dst
                  this->mat_.row_offset,     // src
                  (this->get_nrow()+1)*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(cast_mat->mat_.col, // dst
+      hipMemcpyAsync(cast_mat->mat_.col, // dst
                  this->mat_.col,     // src
                  this->get_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(cast_mat->mat_.val, // dst
+      hipMemcpyAsync(cast_mat->mat_.val, // dst
                  this->mat_.val,     // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToHost);    
+                 hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
@@ -474,22 +475,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFrom(const BaseMatrix<ValueType> &s
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(this->mat_.row_offset,         // dst
+        hipMemcpy(this->mat_.row_offset,         // dst
                    gpu_cast_mat->mat_.row_offset, // src
                    (this->get_nrow()+1)*sizeof(int), // size
-                   cudaMemcpyDeviceToDevice);
+                   hipMemcpyDeviceToDevice);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(this->mat_.col,         // dst
+        hipMemcpy(this->mat_.col,         // dst
                    gpu_cast_mat->mat_.col, // src
                    this->get_nnz()*sizeof(int), // size
-                   cudaMemcpyDeviceToDevice);
+                   hipMemcpyDeviceToDevice);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(this->mat_.val,         // dst
+        hipMemcpy(this->mat_.val,         // dst
                    gpu_cast_mat->mat_.val, // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToDevice);    
+                   hipMemcpyDeviceToDevice);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
 
@@ -536,22 +537,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFromAsync(const BaseMatrix<ValueTyp
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(this->mat_.row_offset,         // dst
+        hipMemcpy(this->mat_.row_offset,         // dst
                    gpu_cast_mat->mat_.row_offset, // src
                    (this->get_nrow()+1)*sizeof(int), // size
-                   cudaMemcpyDeviceToDevice);
+                   hipMemcpyDeviceToDevice);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(this->mat_.col,         // dst
+        hipMemcpy(this->mat_.col,         // dst
                    gpu_cast_mat->mat_.col, // src
                    this->get_nnz()*sizeof(int), // size
-                   cudaMemcpyDeviceToDevice);
+                   hipMemcpyDeviceToDevice);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(this->mat_.val,         // dst
+        hipMemcpy(this->mat_.val,         // dst
                    gpu_cast_mat->mat_.val, // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToDevice);    
+                   hipMemcpyDeviceToDevice);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
 
@@ -599,22 +600,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyTo(BaseMatrix<ValueType> *dst) cons
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(gpu_cast_mat->mat_.row_offset, // dst
+        hipMemcpy(gpu_cast_mat->mat_.row_offset, // dst
                    this->mat_.row_offset,         // src
                    (this->get_nrow()+1)*sizeof(int), // size
-                   cudaMemcpyDeviceToHost);
+                   hipMemcpyDeviceToHost);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(gpu_cast_mat->mat_.col, // dst
+        hipMemcpy(gpu_cast_mat->mat_.col, // dst
                    this->mat_.col,         // src
                    this->get_nnz()*sizeof(int), // size
-                   cudaMemcpyDeviceToHost);
+                   hipMemcpyDeviceToHost);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(gpu_cast_mat->mat_.val, // dst
+        hipMemcpy(gpu_cast_mat->mat_.val, // dst
                    this->mat_.val,         // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToHost);    
+                   hipMemcpyDeviceToHost);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
     
@@ -663,22 +664,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyToAsync(BaseMatrix<ValueType> *dst)
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(gpu_cast_mat->mat_.row_offset, // dst
+        hipMemcpy(gpu_cast_mat->mat_.row_offset, // dst
                    this->mat_.row_offset,         // src
                    (this->get_nrow()+1)*sizeof(int), // size
-                   cudaMemcpyDeviceToHost);
+                   hipMemcpyDeviceToHost);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(gpu_cast_mat->mat_.col, // dst
+        hipMemcpy(gpu_cast_mat->mat_.col, // dst
                    this->mat_.col,         // src
                    this->get_nnz()*sizeof(int), // size
-                   cudaMemcpyDeviceToHost);
+                   hipMemcpyDeviceToHost);
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
         
-        cudaMemcpy(gpu_cast_mat->mat_.val, // dst
+        hipMemcpy(gpu_cast_mat->mat_.val, // dst
                    this->mat_.val,         // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToHost);    
+                   hipMemcpyDeviceToHost);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
     
@@ -714,22 +715,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFromCSR(const int *row_offsets, con
     assert(this->nrow_ > 0);
     assert(this->ncol_ > 0);
 
-    cudaMemcpy(this->mat_.row_offset,            // dst
+    hipMemcpy(this->mat_.row_offset,            // dst
                row_offsets,                      // src
                (this->get_nrow()+1)*sizeof(int), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(this->mat_.col,              // dst
+    hipMemcpy(this->mat_.col,              // dst
                col,                         // src
                this->get_nnz()*sizeof(int), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(this->mat_.val,                    // dst
+    hipMemcpy(this->mat_.val,                    // dst
                val,                               // src
                this->get_nnz()*sizeof(ValueType), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -747,22 +748,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyToCSR(int *row_offsets, int *col, V
     assert(this->nrow_ > 0);
     assert(this->ncol_ > 0);
 
-    cudaMemcpy(row_offsets,                      // dst
+    hipMemcpy(row_offsets,                      // dst
                this->mat_.row_offset,            // src
                (this->get_nrow()+1)*sizeof(int), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(col,                         // dst
+    hipMemcpy(col,                         // dst
                this->mat_.col,              // src
                this->get_nnz()*sizeof(int), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(val,                               // dst
+    hipMemcpy(val,                               // dst
                this->mat_.val,                    // src
                this->get_nnz()*sizeof(ValueType), // size
-               cudaMemcpyDeviceToDevice);
+               hipMemcpyDeviceToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -797,9 +798,9 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
   Allocate
   copy colmn
   copy val
-  cusparseStatus_t
-      cusparseXcoo2csr(cusparseHandle_t handle, const int *cooRowInd,
-                       int nnz, int m, int *csrRowPtr, cusparseIndexBase_t
+  hipsparseStatus_t
+      hipsparseXcoo2csr(hipsparseHandle_t handle, const int *cooRowInd,
+                       int nnz, int m, int *csrRowPtr, hipsparseIndexBase_t
                        idxBase);
 
 
@@ -934,22 +935,22 @@ void GPUAcceleratorMatrixCSR<ValueType>::CopyFromHostCSR(const int *row_offset, 
     this->ncol_ = ncol;
     this->nnz_  = nnz;
 
-    cudaMemcpy(this->mat_.row_offset,       // dst
+    hipMemcpy(this->mat_.row_offset,       // dst
                row_offset,                  // src
                (this->nrow_+1)*sizeof(int), // size
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(this->mat_.col,         // dst
+    hipMemcpy(this->mat_.col,         // dst
                col,                    // src
                this->nnz_*sizeof(int), // size
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-    cudaMemcpy(this->mat_.val,               // dst
+    hipMemcpy(this->mat_.val,               // dst
                val,                          // src
                this->nnz_*sizeof(ValueType), // size
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -984,17 +985,17 @@ bool GPUAcceleratorMatrixCSR<ValueType>::Permute( const BaseVector<int> &permuta
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_calc_row_nnz<int> <<< GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset, d_nnzr);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_calc_row_nnz<int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset, d_nnzr);
     CHECK_CUDA_ERROR(__FILE__,__LINE__);
 
-    kernel_permute_row_nnz<int> <<< GridSize, BlockSize>>>(this->get_nrow(), d_nnzr, cast_perm->vec_, d_nnzrPerm);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_row_nnz<int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), d_nnzr, cast_perm->vec_, d_nnzrPerm);
     CHECK_CUDA_ERROR(__FILE__,__LINE__);
 
     //TODO 
     //move in extra file
     cum_sum<int, 256>(d_nnzPerm, d_nnzrPerm, this->get_nrow());
 
-    kernel_permute_rows<ValueType, int> <<<GridSize, BlockSize>>>(
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_rows<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, 
                     this->get_nrow(), 
                     this->mat_.row_offset,
                     d_nnzPerm,
@@ -1025,16 +1026,16 @@ bool GPUAcceleratorMatrixCSR<ValueType>::Permute( const BaseVector<int> &permuta
                  / this->local_backend_.GPU_block_size ) + 1 ) * this->local_backend_.GPU_block_size;
     LOCAL_SIZE = GROUP_SIZE / this->local_backend_.GPU_block_size;
 
-    kernel_max<int, int, 256> <<<GridSize2, BlockSize2>>> (nrow, d_nnzr, d_buffer, GROUP_SIZE, LOCAL_SIZE);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_max<int, int, 256>), dim3(GridSize2), dim3(BlockSize2), 0, 0, nrow, d_nnzr, d_buffer, GROUP_SIZE, LOCAL_SIZE);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     FinalReduceSize = this->local_backend_.GPU_warp * 4;
     allocate_host(FinalReduceSize, &h_buffer);
 
-    cudaMemcpy(h_buffer, // dst
+    hipMemcpy(h_buffer, // dst
                d_buffer, // src
                FinalReduceSize*sizeof(int), // size
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     free_gpu<int>(&d_buffer);
@@ -1047,27 +1048,27 @@ bool GPUAcceleratorMatrixCSR<ValueType>::Permute( const BaseVector<int> &permuta
     free_host(&h_buffer);
 
     if (maxnnzrow > 64)
-      kernel_permute_cols_fallback<ValueType, int> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols_fallback<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                              cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                              d_data, this->mat_.col, this->mat_.val);
     else if (maxnnzrow >  32)
-      kernel_permute_cols<ValueType, int, 64> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols<ValueType, int, 64>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                         cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                         d_data, this->mat_.col, this->mat_.val);
     else if (maxnnzrow >  16)
-      kernel_permute_cols<ValueType, int, 32> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols<ValueType, int, 32>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                         cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                         d_data, this->mat_.col, this->mat_.val);
     else if (maxnnzrow >   8)
-      kernel_permute_cols<ValueType, int, 16> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols<ValueType, int, 16>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                         cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                         d_data, this->mat_.col, this->mat_.val);
     else if (maxnnzrow >   4)
-      kernel_permute_cols<ValueType, int, 8> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols<ValueType, int, 8>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                        cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                        d_data, this->mat_.col, this->mat_.val);
     else
-      kernel_permute_cols<ValueType, int, 4> <<<GridSize, BlockSize>>>(this->get_nrow(), this->mat_.row_offset,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_permute_cols<ValueType, int, 4>), dim3(GridSize), dim3(BlockSize), 0, 0, this->get_nrow(), this->mat_.row_offset,
                                                                        cast_perm->vec_, d_nnzrPerm, d_offset,
                                                                        d_data, this->mat_.col, this->mat_.val);
     CHECK_CUDA_ERROR(__FILE__,__LINE__);
@@ -1099,12 +1100,12 @@ void GPUAcceleratorMatrixCSR<float>::Apply(const BaseVector<float> &in, BaseVect
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
     const float scalar = 1.0;
     const float beta = 0.0;
 
-    stat_t = cusparseScsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                            CUSPARSE_OPERATION_NON_TRANSPOSE,
+    stat_t = hipsparseScsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                            HIPSPARSE_OPERATION_NON_TRANSPOSE,
                             this->get_nrow(), this->get_ncol(), this->get_nnz(), &scalar,
                             this->mat_descr_,
                             this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1118,7 +1119,7 @@ void GPUAcceleratorMatrixCSR<float>::Apply(const BaseVector<float> &in, BaseVect
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
     
-    kernel_csr_spmv_scalar<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_spmv_scalar<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                       cast_in->vec_, cast_out->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);      
@@ -1143,12 +1144,12 @@ void GPUAcceleratorMatrixCSR<double>::Apply(const BaseVector<double> &in, BaseVe
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
     const double scalar = 1.0;
     const double beta = 0.0;
 
-    stat_t = cusparseDcsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                            CUSPARSE_OPERATION_NON_TRANSPOSE,
+    stat_t = hipsparseDcsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                            HIPSPARSE_OPERATION_NON_TRANSPOSE,
                             this->get_nrow(), this->get_ncol(), this->get_nnz(), &scalar,
                             this->mat_descr_,
                             this->mat_.val, 
@@ -1163,7 +1164,7 @@ void GPUAcceleratorMatrixCSR<double>::Apply(const BaseVector<double> &in, BaseVe
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_spmv_scalar<double, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_spmv_scalar<double, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                       cast_in->vec_, cast_out->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -1189,11 +1190,11 @@ void GPUAcceleratorMatrixCSR<float>::ApplyAdd(const BaseVector<float> &in, const
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
     const float beta = 1.0;
 
-    stat_t = cusparseScsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                            CUSPARSE_OPERATION_NON_TRANSPOSE,
+    stat_t = hipsparseScsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                            HIPSPARSE_OPERATION_NON_TRANSPOSE,
                             this->get_nrow(), this->get_ncol(), this->get_nnz(), &scalar,
                             this->mat_descr_,
                             this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1207,7 +1208,7 @@ void GPUAcceleratorMatrixCSR<float>::ApplyAdd(const BaseVector<float> &in, const
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
     
-    kernel_csr_add_spmv_scalar<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_add_spmv_scalar<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                           scalar, cast_in->vec_, cast_out->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);    
@@ -1233,11 +1234,11 @@ void GPUAcceleratorMatrixCSR<double>::ApplyAdd(const BaseVector<double> &in, con
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
     const double beta = 1.0;
 
-    stat_t = cusparseDcsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                            CUSPARSE_OPERATION_NON_TRANSPOSE,
+    stat_t = hipsparseDcsrmv(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                            HIPSPARSE_OPERATION_NON_TRANSPOSE,
                             this->get_nrow(), this->get_ncol(), this->get_nnz(), &scalar,
                             this->mat_descr_,
                             this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1251,7 +1252,7 @@ void GPUAcceleratorMatrixCSR<double>::ApplyAdd(const BaseVector<double> &in, con
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
     
-    kernel_csr_add_spmv_scalar<double, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_add_spmv_scalar<double, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                           scalar, cast_in->vec_, cast_out->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);    
@@ -1266,7 +1267,7 @@ bool GPUAcceleratorMatrixCSR<float>::ILU0Factorize(void) {
   
   if (this->get_nnz() > 0) {
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     cusparseSolveAnalysisInfo_t infoA = 0;
 
@@ -1274,7 +1275,7 @@ bool GPUAcceleratorMatrixCSR<float>::ILU0Factorize(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1282,7 +1283,7 @@ bool GPUAcceleratorMatrixCSR<float>::ILU0Factorize(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsrilu0(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                              CUSPARSE_OPERATION_NON_TRANSPOSE,
+                              HIPSPARSE_OPERATION_NON_TRANSPOSE,
                               this->get_nrow(),
                               this->mat_descr_,
                               this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1303,7 +1304,7 @@ bool GPUAcceleratorMatrixCSR<double>::ILU0Factorize(void) {
 
   if (this->get_nnz() > 0) {
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     cusparseSolveAnalysisInfo_t infoA = 0;
 
@@ -1311,7 +1312,7 @@ bool GPUAcceleratorMatrixCSR<double>::ILU0Factorize(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1319,7 +1320,7 @@ bool GPUAcceleratorMatrixCSR<double>::ILU0Factorize(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsrilu0(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                              CUSPARSE_OPERATION_NON_TRANSPOSE,
+                              HIPSPARSE_OPERATION_NON_TRANSPOSE,
                               this->get_nrow(),
                               this->mat_descr_,
                               this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1340,24 +1341,24 @@ bool GPUAcceleratorMatrixCSR<float>::ICFactorize(BaseVector<float> *inv_diag) {
 
   if (this->get_nnz() > 0) {
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     cusparseSolveAnalysisInfo_t infoA = 0;
 
     stat_t = cusparseCreateSolveAnalysisInfo(&infoA);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->mat_descr_, CUSPARSE_MATRIX_TYPE_SYMMETRIC);
+    stat_t = hipsparseSetMatType(this->mat_descr_, HIPSPARSE_MATRIX_TYPE_SYMMETRIC);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle), 
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col, 
@@ -1365,7 +1366,7 @@ bool GPUAcceleratorMatrixCSR<float>::ICFactorize(BaseVector<float> *inv_diag) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsric0(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                             CUSPARSE_OPERATION_NON_TRANSPOSE,
+                             HIPSPARSE_OPERATION_NON_TRANSPOSE,
                              this->get_nrow(),
                              this->mat_descr_,
                              this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1383,24 +1384,24 @@ bool GPUAcceleratorMatrixCSR<double>::ICFactorize(BaseVector<double> *inv_diag) 
 
   if (this->get_nnz() > 0) {
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     cusparseSolveAnalysisInfo_t infoA = 0;
 
     stat_t = cusparseCreateSolveAnalysisInfo(&infoA);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->mat_descr_, CUSPARSE_MATRIX_TYPE_SYMMETRIC);
+    stat_t = hipsparseSetMatType(this->mat_descr_, HIPSPARSE_MATRIX_TYPE_SYMMETRIC);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle), 
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col, 
@@ -1408,7 +1409,7 @@ bool GPUAcceleratorMatrixCSR<double>::ICFactorize(BaseVector<double> *inv_diag) 
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsric0(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                             CUSPARSE_OPERATION_NON_TRANSPOSE,
+                             HIPSPARSE_OPERATION_NON_TRANSPOSE,
                              this->get_nrow(),
                              this->mat_descr_,
                              this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1426,22 +1427,22 @@ void GPUAcceleratorMatrixCSR<double>::LUAnalyse(void) {
 
     this->LUAnalyseClear();
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     // L part
-    stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+    stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->L_mat_info_);
@@ -1449,19 +1450,19 @@ void GPUAcceleratorMatrixCSR<double>::LUAnalyse(void) {
 
 
     // U part
-    stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+    stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_UPPER);
+    stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_UPPER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->U_mat_info_);
@@ -1469,7 +1470,7 @@ void GPUAcceleratorMatrixCSR<double>::LUAnalyse(void) {
 
     // Analysis
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->L_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1477,7 +1478,7 @@ void GPUAcceleratorMatrixCSR<double>::LUAnalyse(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE, 
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE, 
                                      this->get_nrow(), this->get_nnz(), 
                                      this->U_mat_descr_, 
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1498,22 +1499,22 @@ void GPUAcceleratorMatrixCSR<float>::LUAnalyse(void) {
 
     this->LUAnalyseClear();
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     // L part
-    stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+    stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->L_mat_info_);
@@ -1521,19 +1522,19 @@ void GPUAcceleratorMatrixCSR<float>::LUAnalyse(void) {
 
 
     // U part
-    stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+    stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_UPPER);
+    stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_UPPER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->U_mat_info_);
@@ -1541,7 +1542,7 @@ void GPUAcceleratorMatrixCSR<float>::LUAnalyse(void) {
 
     // Analysis
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->L_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1549,7 +1550,7 @@ void GPUAcceleratorMatrixCSR<float>::LUAnalyse(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE, 
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE, 
                                      this->get_nrow(), this->get_nnz(), 
                                      this->U_mat_descr_, 
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1568,7 +1569,7 @@ void GPUAcceleratorMatrixCSR<float>::LUAnalyse(void) {
 template <typename ValueType>
 void GPUAcceleratorMatrixCSR<ValueType>::LUAnalyseClear(void) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   if (this->L_mat_info_ != 0) {
     stat_t = cusparseDestroySolveAnalysisInfo(this->L_mat_info_);
@@ -1576,7 +1577,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LUAnalyseClear(void) {
   }
 
   if (this->L_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->L_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -1586,7 +1587,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LUAnalyseClear(void) {
   }
 
   if (this->U_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->U_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -1626,13 +1627,13 @@ bool GPUAcceleratorMatrixCSR<float>::LUSolve(const BaseVector<float> &in, BaseVe
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     float one = float(1.0);
 
     // Solve L
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -1644,7 +1645,7 @@ bool GPUAcceleratorMatrixCSR<float>::LUSolve(const BaseVector<float> &in, BaseVe
 
     // Solve U
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -1682,13 +1683,13 @@ bool GPUAcceleratorMatrixCSR<double>::LUSolve(const BaseVector<double> &in, Base
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     double one = double(1.0);
 
     // Solve L
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -1700,7 +1701,7 @@ bool GPUAcceleratorMatrixCSR<double>::LUSolve(const BaseVector<double> &in, Base
 
     // Solve U
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -1721,41 +1722,41 @@ void GPUAcceleratorMatrixCSR<double>::LLAnalyse(void) {
 
     this->LLAnalyseClear();
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     // L part
-    stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_TRIANGULAR);
+    stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_TRIANGULAR);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->L_mat_info_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     // U part
-    stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_TRIANGULAR);
+    stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_TRIANGULAR);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->U_mat_info_);
@@ -1763,7 +1764,7 @@ void GPUAcceleratorMatrixCSR<double>::LLAnalyse(void) {
 
     // Analysis
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->L_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1771,7 +1772,7 @@ void GPUAcceleratorMatrixCSR<double>::LLAnalyse(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->U_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1792,41 +1793,41 @@ void GPUAcceleratorMatrixCSR<float>::LLAnalyse(void) {
 
     this->LLAnalyseClear();
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     // L part
-    stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_TRIANGULAR);
+    stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_TRIANGULAR);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->L_mat_info_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     // U part
-    stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+    stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_TRIANGULAR);
+    stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_TRIANGULAR);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+    stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+    stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseCreateSolveAnalysisInfo(&this->U_mat_info_);
@@ -1834,7 +1835,7 @@ void GPUAcceleratorMatrixCSR<float>::LLAnalyse(void) {
 
     // Analysis
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->L_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1842,7 +1843,7 @@ void GPUAcceleratorMatrixCSR<float>::LLAnalyse(void) {
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
     stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                     CUSPARSE_OPERATION_TRANSPOSE,
+                                     HIPSPARSE_OPERATION_TRANSPOSE,
                                      this->get_nrow(), this->get_nnz(),
                                      this->U_mat_descr_,
                                      this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -1861,7 +1862,7 @@ void GPUAcceleratorMatrixCSR<float>::LLAnalyse(void) {
 template <typename ValueType>
 void GPUAcceleratorMatrixCSR<ValueType>::LLAnalyseClear(void) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   if (this->L_mat_info_ != 0) {
     stat_t = cusparseDestroySolveAnalysisInfo(this->L_mat_info_);
@@ -1869,7 +1870,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LLAnalyseClear(void) {
   }
 
   if (this->L_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->L_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -1879,7 +1880,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LLAnalyseClear(void) {
   }
 
   if (this->U_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->U_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -1918,13 +1919,13 @@ bool GPUAcceleratorMatrixCSR<double>::LLSolve(const BaseVector<double> &in, Base
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     double one = double(1.0);
 
     // Solve L
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -1936,7 +1937,7 @@ bool GPUAcceleratorMatrixCSR<double>::LLSolve(const BaseVector<double> &in, Base
 
     // Solve U
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -1974,13 +1975,13 @@ bool GPUAcceleratorMatrixCSR<float>::LLSolve(const BaseVector<float> &in, BaseVe
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     float one = float(1.0);
 
     // Solve L
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -1992,7 +1993,7 @@ bool GPUAcceleratorMatrixCSR<float>::LLSolve(const BaseVector<float> &in, BaseVe
 
     // Solve U
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -2019,28 +2020,28 @@ bool GPUAcceleratorMatrixCSR<ValueType>::LLSolve(const BaseVector<ValueType> &in
 template <>
 void GPUAcceleratorMatrixCSR<double>::LAnalyse(const bool diag_unit) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   // L part
-  stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+  stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+  stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+  stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+  stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
   if (diag_unit == true) {
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
 
   } else {
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
 
   }
 
@@ -2051,7 +2052,7 @@ void GPUAcceleratorMatrixCSR<double>::LAnalyse(const bool diag_unit) {
 
   // Analysis
   stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                   CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                   HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                    this->get_nrow(), this->get_nnz(),
                                    this->L_mat_descr_,
                                    this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -2063,28 +2064,28 @@ void GPUAcceleratorMatrixCSR<double>::LAnalyse(const bool diag_unit) {
 template <>
 void GPUAcceleratorMatrixCSR<float>::LAnalyse(const bool diag_unit) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   // L part
-  stat_t = cusparseCreateMatDescr(&this->L_mat_descr_);
+  stat_t = hipsparseCreateMatDescr(&this->L_mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatType(this->L_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+  stat_t = hipsparseSetMatType(this->L_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatIndexBase(this->L_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+  stat_t = hipsparseSetMatIndexBase(this->L_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatFillMode(this->L_mat_descr_, CUSPARSE_FILL_MODE_LOWER);
+  stat_t = hipsparseSetMatFillMode(this->L_mat_descr_, HIPSPARSE_FILL_MODE_LOWER);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
   if (diag_unit == true) {
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
 
   } else {
 
-    stat_t = cusparseSetMatDiagType(this->L_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->L_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
 
   }
 
@@ -2095,7 +2096,7 @@ void GPUAcceleratorMatrixCSR<float>::LAnalyse(const bool diag_unit) {
 
   // Analysis
   stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                   CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                   HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                    this->get_nrow(), this->get_nnz(),
                                    this->L_mat_descr_,
                                    this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -2107,28 +2108,28 @@ void GPUAcceleratorMatrixCSR<float>::LAnalyse(const bool diag_unit) {
 template <>
 void GPUAcceleratorMatrixCSR<double>::UAnalyse(const bool diag_unit) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   // U upart
-  stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+  stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+  stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+  stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_UPPER);
+  stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_UPPER);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
   if (diag_unit == true) {
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
 
   } else {
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
 
   }
 
@@ -2139,7 +2140,7 @@ void GPUAcceleratorMatrixCSR<double>::UAnalyse(const bool diag_unit) {
 
   // Analysis
   stat_t = cusparseDcsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                   CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                   HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                    this->get_nrow(), this->get_nnz(),
                                    this->U_mat_descr_,
                                    this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -2151,28 +2152,28 @@ void GPUAcceleratorMatrixCSR<double>::UAnalyse(const bool diag_unit) {
 template <>
 void GPUAcceleratorMatrixCSR<float>::UAnalyse(const bool diag_unit) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   // U part
-  stat_t = cusparseCreateMatDescr(&this->U_mat_descr_);
+  stat_t = hipsparseCreateMatDescr(&this->U_mat_descr_);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatType(this->U_mat_descr_,CUSPARSE_MATRIX_TYPE_GENERAL);
+  stat_t = hipsparseSetMatType(this->U_mat_descr_,HIPSPARSE_MATRIX_TYPE_GENERAL);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatIndexBase(this->U_mat_descr_,CUSPARSE_INDEX_BASE_ZERO);
+  stat_t = hipsparseSetMatIndexBase(this->U_mat_descr_,HIPSPARSE_INDEX_BASE_ZERO);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseSetMatFillMode(this->U_mat_descr_, CUSPARSE_FILL_MODE_UPPER);
+  stat_t = hipsparseSetMatFillMode(this->U_mat_descr_, HIPSPARSE_FILL_MODE_UPPER);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
   if (diag_unit == true) {
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_UNIT);
 
   } else {
 
-    stat_t = cusparseSetMatDiagType(this->U_mat_descr_, CUSPARSE_DIAG_TYPE_NON_UNIT);
+    stat_t = hipsparseSetMatDiagType(this->U_mat_descr_, HIPSPARSE_DIAG_TYPE_NON_UNIT);
 
   }
 
@@ -2183,7 +2184,7 @@ void GPUAcceleratorMatrixCSR<float>::UAnalyse(const bool diag_unit) {
 
   // Analysis
   stat_t = cusparseScsrsv_analysis(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                   CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                   HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                    this->get_nrow(), this->get_nnz(),
                                    this->U_mat_descr_,
                                    this->mat_.val, this->mat_.row_offset, this->mat_.col,
@@ -2195,7 +2196,7 @@ void GPUAcceleratorMatrixCSR<float>::UAnalyse(const bool diag_unit) {
 template <typename ValueType>
 void GPUAcceleratorMatrixCSR<ValueType>::LAnalyseClear(void) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   if (this->L_mat_info_ != 0) {
     stat_t = cusparseDestroySolveAnalysisInfo(this->L_mat_info_);
@@ -2203,7 +2204,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LAnalyseClear(void) {
   }
 
   if (this->L_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->L_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->L_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -2215,7 +2216,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::LAnalyseClear(void) {
 template <typename ValueType>
 void GPUAcceleratorMatrixCSR<ValueType>::UAnalyseClear(void) {
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
   if (this->U_mat_info_ != 0) {
     stat_t = cusparseDestroySolveAnalysisInfo(this->U_mat_info_);
@@ -2223,7 +2224,7 @@ void GPUAcceleratorMatrixCSR<ValueType>::UAnalyseClear(void) {
   }
 
   if (this->U_mat_descr_ != 0) {
-    stat_t = cusparseDestroyMatDescr(this->U_mat_descr_);
+    stat_t = hipsparseDestroyMatDescr(this->U_mat_descr_);
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__); 
   }
 
@@ -2254,13 +2255,13 @@ bool GPUAcceleratorMatrixCSR<double>::LSolve(const BaseVector<double> &in, BaseV
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     double one = double(1.0);
 
     // Solve L
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -2298,13 +2299,13 @@ bool GPUAcceleratorMatrixCSR<float>::LSolve(const BaseVector<float> &in, BaseVec
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     float one = float(1.0);
 
     // Solve L
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->L_mat_descr_,
@@ -2342,13 +2343,13 @@ bool GPUAcceleratorMatrixCSR<double>::USolve(const BaseVector<double> &in, BaseV
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     double one = double(1.0);
 
     // Solve U
     stat_t = cusparseDcsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -2386,13 +2387,13 @@ bool GPUAcceleratorMatrixCSR<float>::USolve(const BaseVector<float> &in, BaseVec
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
     float one = float(1.0);
 
     // Solve U
     stat_t = cusparseScsrsv_solve(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                  HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                   this->get_nrow(),
                                   &one,
                                   this->U_mat_descr_,
@@ -2422,7 +2423,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractDiagonal(BaseVector<ValueType> *
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_extract_diag<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_diag<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                        cast_vec_diag->vec_);
     
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -2447,7 +2448,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractInverseDiagonal(BaseVector<Value
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_extract_inv_diag<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_inv_diag<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                            this->mat_.val, cast_vec_inv_diag->vec_);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -2488,7 +2489,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractSubMatrix(const int row_offset,
   dim3 BlockSize(this->local_backend_.GPU_block_size);
   dim3 GridSize(row_size / this->local_backend_.GPU_block_size + 1);
   
-  kernel_csr_extract_submatrix_row_nnz<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset, this->mat_.col, this->mat_.val,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_submatrix_row_nnz<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                                   row_offset, col_offset, 
                                                                                   row_size, col_size, 
                                                                                   row_nnz);
@@ -2500,10 +2501,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractSubMatrix(const int row_offset,
   
   // CPU reduction
   /*
-  cudaMemcpy(red_row_nnz, // dst
+  hipMemcpy(red_row_nnz, // dst
              row_nnz,  // src
              (row_size+1)*sizeof(int), // size
-             cudaMemcpyDeviceToHost);
+             hipMemcpyDeviceToHost);
 
   int sum=0;
   for (int i=0; i<row_size; ++i) {
@@ -2519,8 +2520,8 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractSubMatrix(const int row_offset,
   //move in extra file
   cum_sum<int, 256>(sub_nnz, row_nnz, row_size);
   
-  cudaMemcpy(&mat_nnz, &sub_nnz[row_size],
-             sizeof(int), cudaMemcpyDeviceToHost);
+  hipMemcpy(&mat_nnz, &sub_nnz[row_size],
+             sizeof(int), hipMemcpyDeviceToHost);
 
   // not empty submatrix
   if (mat_nnz > 0) {
@@ -2529,17 +2530,17 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractSubMatrix(const int row_offset,
 
     // part of the CPU reduction section
     /*
-    cudaMemcpy(cast_mat->mat_.row_offset, // dst
+    hipMemcpy(cast_mat->mat_.row_offset, // dst
                red_row_nnz,  // src
                (row_size+1)*sizeof(int), // size
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
     */
     
     free_gpu<int>(&cast_mat->mat_.row_offset);
     cast_mat->mat_.row_offset = sub_nnz;
     // copying the sub matrix
     
-    kernel_csr_extract_submatrix_copy<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset, this->mat_.col, this->mat_.val,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_submatrix_copy<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset, this->mat_.col, this->mat_.val,
                                                                                  row_offset, col_offset, 
                                                                                  row_size, col_size,
                                                                                  cast_mat->mat_.row_offset, cast_mat->mat_.col, cast_mat->mat_.val);
@@ -2576,7 +2577,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractL(BaseMatrix<ValueType> *L) cons
   dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
   
   
-  kernel_csr_slower_nnz_per_row<int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_slower_nnz_per_row<int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                               this->mat_.col, cast_L->mat_.row_offset+1);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   
@@ -2584,10 +2585,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractL(BaseMatrix<ValueType> *L) cons
   // TODO currently performing partial sum on host
   int *h_buffer = NULL;
   allocate_host(nrow+1, &h_buffer);
-  cudaMemcpy(h_buffer+1, // dst
+  hipMemcpy(h_buffer+1, // dst
              cast_L->mat_.row_offset+1, // src
              nrow*sizeof(int), // size
-             cudaMemcpyDeviceToHost);
+             hipMemcpyDeviceToHost);
   
   h_buffer[0] = 0;
   for (int i=1; i<nrow+1; ++i)
@@ -2595,10 +2596,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractL(BaseMatrix<ValueType> *L) cons
   
   int nnz_L = h_buffer[nrow];
   
-  cudaMemcpy(cast_L->mat_.row_offset, // dst
+  hipMemcpy(cast_L->mat_.row_offset, // dst
              h_buffer, // src
              (nrow+1)*sizeof(int), // size
-             cudaMemcpyHostToDevice);
+             hipMemcpyHostToDevice);
   
   free_host(&h_buffer);
   // end TODO
@@ -2608,7 +2609,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractL(BaseMatrix<ValueType> *L) cons
   allocate_gpu<ValueType>(nnz_L, &cast_L->mat_.val);
   
   // fill lower triangular part
-  kernel_csr_extract_l_triangular<ValueType, int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_l_triangular<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                                             this->mat_.col, this->mat_.val,
                                                                             cast_L->mat_.row_offset,
                                                                             cast_L->mat_.col,
@@ -2646,7 +2647,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractLDiagonal(BaseMatrix<ValueType> 
   dim3 BlockSize(this->local_backend_.GPU_block_size);
   dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-  kernel_csr_lower_nnz_per_row<int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_lower_nnz_per_row<int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                               this->mat_.col, cast_L->mat_.row_offset+1);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
 
@@ -2654,10 +2655,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractLDiagonal(BaseMatrix<ValueType> 
   // TODO currently performing partial sum on host
   int *h_buffer = NULL;
   allocate_host(nrow+1, &h_buffer);
-  cudaMemcpy(h_buffer+1, // dst
+  hipMemcpy(h_buffer+1, // dst
              cast_L->mat_.row_offset+1, // src
              nrow*sizeof(int), // size
-             cudaMemcpyDeviceToHost);
+             hipMemcpyDeviceToHost);
 
   h_buffer[0] = 0;
   for (int i=1; i<nrow+1; ++i)
@@ -2665,10 +2666,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractLDiagonal(BaseMatrix<ValueType> 
   
   int nnz_L = h_buffer[nrow];
 
-  cudaMemcpy(cast_L->mat_.row_offset, // dst
+  hipMemcpy(cast_L->mat_.row_offset, // dst
              h_buffer, // src
              (nrow+1)*sizeof(int), // size
-             cudaMemcpyHostToDevice);
+             hipMemcpyHostToDevice);
   
   free_host(&h_buffer);
   // end TODO
@@ -2678,7 +2679,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractLDiagonal(BaseMatrix<ValueType> 
   allocate_gpu<ValueType>(nnz_L, &cast_L->mat_.val);
   
   // fill lower triangular part
-  kernel_csr_extract_l_triangular<ValueType, int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_l_triangular<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                                             this->mat_.col, this->mat_.val,
                                                                             cast_L->mat_.row_offset,
                                                                             cast_L->mat_.col,
@@ -2716,7 +2717,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractU(BaseMatrix<ValueType> *U) cons
   dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
   
   
-  kernel_csr_supper_nnz_per_row<int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_supper_nnz_per_row<int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                               this->mat_.col, cast_U->mat_.row_offset+1);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   
@@ -2724,10 +2725,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractU(BaseMatrix<ValueType> *U) cons
   // TODO currently performing partial sum on host
   int *h_buffer = NULL;
   allocate_host(nrow+1, &h_buffer);
-  cudaMemcpy(h_buffer+1, // dst
+  hipMemcpy(h_buffer+1, // dst
              cast_U->mat_.row_offset+1, // src
              nrow*sizeof(int), // size
-             cudaMemcpyDeviceToHost);
+             hipMemcpyDeviceToHost);
   
   h_buffer[0] = 0;
   for (int i=1; i<nrow+1; ++i)
@@ -2735,10 +2736,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractU(BaseMatrix<ValueType> *U) cons
   
   int nnz_L = h_buffer[nrow];
   
-  cudaMemcpy(cast_U->mat_.row_offset, // dst
+  hipMemcpy(cast_U->mat_.row_offset, // dst
              h_buffer, // src
              (nrow+1)*sizeof(int), // size
-             cudaMemcpyHostToDevice);
+             hipMemcpyHostToDevice);
   
   free_host(&h_buffer);
   // end TODO
@@ -2748,7 +2749,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractU(BaseMatrix<ValueType> *U) cons
   allocate_gpu<ValueType>(nnz_L, &cast_U->mat_.val);
   
   // fill upper triangular part
-  kernel_csr_extract_u_triangular<ValueType, int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_u_triangular<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                                             this->mat_.col, this->mat_.val,
                                                                             cast_U->mat_.row_offset,
                                                                             cast_U->mat_.col,
@@ -2787,7 +2788,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractUDiagonal(BaseMatrix<ValueType> 
   dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
   
   
-  kernel_csr_upper_nnz_per_row<int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_upper_nnz_per_row<int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                               this->mat_.col, cast_U->mat_.row_offset+1);
   CHECK_CUDA_ERROR(__FILE__,__LINE__);
   
@@ -2795,10 +2796,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractUDiagonal(BaseMatrix<ValueType> 
   // TODO currently performing partial sum on host
   int *h_buffer = NULL;
   allocate_host(nrow+1, &h_buffer);
-  cudaMemcpy(h_buffer+1, // dst
+  hipMemcpy(h_buffer+1, // dst
              cast_U->mat_.row_offset+1, // src
              nrow*sizeof(int), // size
-             cudaMemcpyDeviceToHost);
+             hipMemcpyDeviceToHost);
 
   h_buffer[0] = 0;
   for (int i=1; i<nrow+1; ++i)
@@ -2806,10 +2807,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractUDiagonal(BaseMatrix<ValueType> 
   
   int nnz_L = h_buffer[nrow];
 
-  cudaMemcpy(cast_U->mat_.row_offset, // dst
+  hipMemcpy(cast_U->mat_.row_offset, // dst
              h_buffer, // src
              (nrow+1)*sizeof(int), // size
-             cudaMemcpyHostToDevice);
+             hipMemcpyHostToDevice);
   
   free_host(&h_buffer);
   // end TODO
@@ -2819,7 +2820,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractUDiagonal(BaseMatrix<ValueType> 
   allocate_gpu<ValueType>(nnz_L, &cast_U->mat_.val);
   
   // fill lower triangular part
-  kernel_csr_extract_u_triangular<ValueType, int> <<<GridSize, BlockSize>>>(nrow, this->mat_.row_offset,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_u_triangular<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                                             this->mat_.col, this->mat_.val,
                                                                             cast_U->mat_.row_offset,
                                                                             cast_U->mat_.col,
@@ -2848,8 +2849,8 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MaximalIndependentSet(int &size,
   allocate_host(this->get_nrow()+1, &h_row_offset);
   allocate_host(this->get_nnz(), &h_col);
 
-  cudaMemcpy(h_row_offset, this->mat_.row_offset, (this->get_nrow()+1)*sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_col, this->mat_.col, this->get_nnz()*sizeof(int), cudaMemcpyDeviceToHost);
+  hipMemcpy(h_row_offset, this->mat_.row_offset, (this->get_nrow()+1)*sizeof(int), hipMemcpyDeviceToHost);
+  hipMemcpy(h_col, this->mat_.col, this->get_nnz()*sizeof(int), hipMemcpyDeviceToHost);
 
   int *mis = NULL;
   allocate_host(this->get_nrow(), &mis);
@@ -2901,7 +2902,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MaximalIndependentSet(int &size,
 
 
   cast_perm->Allocate(this->get_nrow());
-  cudaMemcpy(cast_perm->vec_, h_perm, permutation->get_size()*sizeof(int), cudaMemcpyHostToDevice);
+  hipMemcpy(cast_perm->vec_, h_perm, permutation->get_size()*sizeof(int), hipMemcpyHostToDevice);
 
   free_host(&h_row_offset);
   free_host(&h_col);
@@ -2930,8 +2931,8 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MultiColoring(int &num_colors,
   allocate_host(this->get_nrow()+1, &h_row_offset);
   allocate_host(this->get_nnz(), &h_col);
 
-  cudaMemcpy(h_row_offset, this->mat_.row_offset, (this->get_nrow()+1)*sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_col, this->mat_.col, this->get_nnz()*sizeof(int), cudaMemcpyDeviceToHost);
+  hipMemcpy(h_row_offset, this->mat_.row_offset, (this->get_nrow()+1)*sizeof(int), hipMemcpyDeviceToHost);
+  hipMemcpy(h_col, this->mat_.col, this->get_nnz()*sizeof(int), hipMemcpyDeviceToHost);
 
   memset(color, 0, size*sizeof(int));
   num_colors = 0;
@@ -2988,7 +2989,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MultiColoring(int &num_colors,
   }
 
   cast_perm->Allocate(this->get_nrow());
-  cudaMemcpy(cast_perm->vec_, h_perm, permutation->get_size()*sizeof(int), cudaMemcpyHostToDevice);
+  hipMemcpy(cast_perm->vec_, h_perm, permutation->get_size()*sizeof(int), hipMemcpyHostToDevice);
 
   free_host(&h_perm);
   free_host(&color);
@@ -3003,9 +3004,9 @@ bool GPUAcceleratorMatrixCSR<double>::Scale(const double alpha) {
 
   if (this->get_nnz() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasDscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasDscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_nnz(), &alpha,
                          this->mat_.val, 1);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -3021,9 +3022,9 @@ bool GPUAcceleratorMatrixCSR<float>::Scale(const float alpha) {
 
   if (this->get_nnz() > 0) {
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
-    stat_t = cublasSscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
+    stat_t = hipblasSscal(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle),
                          this->get_nnz(), &alpha,
                          this->mat_.val, 1);
     CHECK_CUBLAS_ERROR(stat_t, __FILE__, __LINE__);
@@ -3043,7 +3044,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ScaleDiagonal(const ValueType alpha) {
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_scale_diagonal<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_scale_diagonal<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                          alpha, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3063,7 +3064,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ScaleOffDiagonal(const ValueType alpha)
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_scale_offdiagonal<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_scale_offdiagonal<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                             alpha, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3083,7 +3084,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::AddScalarDiagonal(const ValueType alpha
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_add_diagonal<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_add_diagonal<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                        alpha, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3103,7 +3104,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::AddScalarOffDiagonal(const ValueType al
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_add_offdiagonal<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_add_offdiagonal<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                        alpha, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3123,7 +3124,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::AddScalar(const ValueType alpha) {
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nnz / this->local_backend_.GPU_block_size + 1);
 
-    kernel_buffer_addscalar<ValueType, int> <<<GridSize, BlockSize>>> (nnz, alpha, this->mat_.val);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_buffer_addscalar<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nnz, alpha, this->mat_.val);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
   }
@@ -3146,7 +3147,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::DiagonalMatrixMultR(const BaseVector<Va
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_diagmatmult_r<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset, this->mat_.col,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_diagmatmult_r<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset, this->mat_.col,
                                                                       cast_diag->vec_, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3171,7 +3172,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::DiagonalMatrixMultL(const BaseVector<Va
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_diagmatmult_l<ValueType, int> <<<GridSize, BlockSize>>> (nrow, this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_diagmatmult_l<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, this->mat_.row_offset,
                                                                       cast_diag->vec_, this->mat_.val);
 
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -3205,15 +3206,15 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MatMatMult(const BaseMatrix<ValueType> 
   allocate_gpu(m+1, &this->mat_.row_offset);
   CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
-  cusparseStatus_t stat_t;
+  hipsparseStatus_t stat_t;
 
-  stat_t = cusparseSetPointerMode(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                  CUSPARSE_POINTER_MODE_HOST);
+  stat_t = hipsparseSetPointerMode(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                                  HIPSPARSE_POINTER_MODE_HOST);
   CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-  stat_t = cusparseXcsrgemmNnz(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                               CUSPARSE_OPERATION_NON_TRANSPOSE,
-                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+  stat_t = hipsparseXcsrgemmNnz(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                               HIPSPARSE_OPERATION_NON_TRANSPOSE,
+                               HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                m, n, k,
                                cast_mat_A->mat_descr_, cast_mat_A->get_nnz(),
                                cast_mat_A->mat_.row_offset, cast_mat_A->mat_.col,
@@ -3234,8 +3235,8 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MatMatMult(const BaseMatrix<ValueType> 
   this->nnz_  = nnzC;
 
   stat_t = __cusparseXcsrgemm__(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                HIPSPARSE_OPERATION_NON_TRANSPOSE,
+                                HIPSPARSE_OPERATION_NON_TRANSPOSE,
                                 m, n, k,
                                 // A
                                 cast_mat_A->mat_descr_, cast_mat_A->get_nnz(),
@@ -3281,7 +3282,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MatrixAdd(const BaseMatrix<ValueType> &
       dim3 BlockSize(this->local_backend_.GPU_block_size);
       dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-      kernel_csr_add_csr_same_struct<ValueType, int> <<<GridSize, BlockSize>>> (nrow,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_add_csr_same_struct<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow,
                                                                                 this->mat_.row_offset, this->mat_.col,
                                                                                 cast_mat->mat_.row_offset,
                                                                                 cast_mat->mat_.col, cast_mat->mat_.val,
@@ -3301,21 +3302,21 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MatrixAdd(const BaseMatrix<ValueType> &
 
       allocate_gpu(m+1, &csrRowPtrC);
 
-      cusparseStatus_t stat_t;
+      hipsparseStatus_t stat_t;
 
-      cusparseMatDescr_t desc_mat_C = 0;
+      hipsparseMatDescr_t desc_mat_C = 0;
 
-      stat_t = cusparseCreateMatDescr(&desc_mat_C);
+      stat_t = hipsparseCreateMatDescr(&desc_mat_C);
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-      stat_t = cusparseSetMatIndexBase(desc_mat_C, CUSPARSE_INDEX_BASE_ZERO);
+      stat_t = hipsparseSetMatIndexBase(desc_mat_C, HIPSPARSE_INDEX_BASE_ZERO);
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-      stat_t = cusparseSetMatType(desc_mat_C, CUSPARSE_MATRIX_TYPE_GENERAL);
+      stat_t = hipsparseSetMatType(desc_mat_C, HIPSPARSE_MATRIX_TYPE_GENERAL);
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-      stat_t = cusparseSetPointerMode(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
-                                      CUSPARSE_POINTER_MODE_HOST);
+      stat_t = hipsparseSetPointerMode(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+                                      HIPSPARSE_POINTER_MODE_HOST);
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
       stat_t = cusparseXcsrgeamNnz(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
@@ -3350,7 +3351,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::MatrixAdd(const BaseMatrix<ValueType> &
 
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
-      stat_t = cusparseDestroyMatDescr(desc_mat_C);
+      stat_t = hipsparseDestroyMatDescr(desc_mat_C);
       CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
       this->Clear();
@@ -3396,7 +3397,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::Compress(const double drop_off) {
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(this->get_nrow() / this->local_backend_.GPU_block_size + 1);
     
-    kernel_csr_compress_count_nrow<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_compress_count_nrow<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset,
                                                                               this->mat_.col,
                                                                               this->mat_.val,
                                                                               this->get_nrow(),
@@ -3408,20 +3409,20 @@ bool GPUAcceleratorMatrixCSR<ValueType>::Compress(const double drop_off) {
     cum_sum<int, 256>(mat_row_offset, row_offset, this->get_nrow());
   
     // get the new mat nnz
-    cudaMemcpy(&mat_nnz, &mat_row_offset[this->get_nrow()],
-               sizeof(int), cudaMemcpyDeviceToHost);
+    hipMemcpy(&mat_nnz, &mat_row_offset[this->get_nrow()],
+               sizeof(int), hipMemcpyDeviceToHost);
     
     this->AllocateCSR(mat_nnz, this->get_nrow(), this->get_ncol());
 
     // TODO - just exchange memory pointers
     // copy row_offset
-    cudaMemcpy(this->mat_.row_offset, mat_row_offset,
-               (this->get_nrow()+1)*sizeof(int), cudaMemcpyDeviceToDevice);
+    hipMemcpy(this->mat_.row_offset, mat_row_offset,
+               (this->get_nrow()+1)*sizeof(int), hipMemcpyDeviceToDevice);
     
     
     // copy col and val
 
-    kernel_csr_compress_copy<ValueType, int> <<<GridSize, BlockSize>>> (tmp.mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_compress_copy<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, tmp.mat_.row_offset,
                                                                         tmp.mat_.col,
                                                                         tmp.mat_.val,
                                                                         tmp.get_nrow(),
@@ -3454,14 +3455,14 @@ bool GPUAcceleratorMatrixCSR<double>::Transpose(void) {
     this->Clear();
     this->AllocateCSR(tmp.get_nnz(), tmp.get_ncol(), tmp.get_nrow());
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
-    stat_t = cusparseDcsr2csc(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+    stat_t = hipsparseDcsr2csc(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
                               tmp.get_nrow(), tmp.get_ncol(), tmp.get_nnz(),
                               tmp.mat_.val, tmp.mat_.row_offset, tmp.mat_.col,
                               this->mat_.val, this->mat_.col, this->mat_.row_offset,
-                              CUSPARSE_ACTION_NUMERIC,
-                              CUSPARSE_INDEX_BASE_ZERO);
+                              HIPSPARSE_ACTION_NUMERIC,
+                              HIPSPARSE_INDEX_BASE_ZERO);
 
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
@@ -3483,14 +3484,14 @@ bool GPUAcceleratorMatrixCSR<float>::Transpose(void) {
     this->Clear();
     this->AllocateCSR(tmp.get_nnz(), tmp.get_ncol(), tmp.get_nrow());
 
-    cusparseStatus_t stat_t;
+    hipsparseStatus_t stat_t;
 
-    stat_t = cusparseScsr2csc(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
+    stat_t = hipsparseScsr2csc(CUSPARSE_HANDLE(this->local_backend_.GPU_cusparse_handle),
                               tmp.get_nrow(), tmp.get_ncol(), tmp.get_nnz(),
                               tmp.mat_.val, tmp.mat_.row_offset, tmp.mat_.col,
                               this->mat_.val, this->mat_.col, this->mat_.row_offset,
-                              CUSPARSE_ACTION_NUMERIC,
-                              CUSPARSE_INDEX_BASE_ZERO);
+                              HIPSPARSE_ACTION_NUMERIC,
+                              HIPSPARSE_INDEX_BASE_ZERO);
 
     CHECK_CUSPARSE_ERROR(stat_t, __FILE__, __LINE__);
 
@@ -3523,7 +3524,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ReplaceColumnVector(const int idx, cons
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_replace_column_vector_offset<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_replace_column_vector_offset<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset,
                                                                                        this->mat_.col,
                                                                                        nrow,
                                                                                        idx,
@@ -3534,10 +3535,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ReplaceColumnVector(const int idx, cons
     int *host_offset = NULL;
     allocate_host(nrow+1, &host_offset);
 
-    cudaMemcpy(host_offset,
+    hipMemcpy(host_offset,
                row_offset,
                sizeof(int)*(nrow+1),
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     host_offset[0] = 0;
@@ -3546,16 +3547,16 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ReplaceColumnVector(const int idx, cons
 
     int nnz  = host_offset[nrow];
 
-    cudaMemcpy(row_offset,
+    hipMemcpy(row_offset,
                host_offset,
                sizeof(int)*(nrow+1),
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     allocate_gpu(nnz, &col);
     allocate_gpu(nnz, &val);
 
-    kernel_csr_replace_column_vector<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_replace_column_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset,
                                                                                 this->mat_.col,
                                                                                 this->mat_.val,
                                                                                 nrow,
@@ -3589,7 +3590,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractColumnVector(const int idx, Base
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(this->get_nrow() / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_extract_column_vector<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_column_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset,
                                                                                 this->mat_.col,
                                                                                 this->mat_.val,
                                                                                 this->get_nrow(),
@@ -3619,10 +3620,10 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractRowVector(const int idx, BaseVec
     // Get nnz of row idx
     int nnz[2];
 
-    cudaMemcpy(nnz,
+    hipMemcpy(nnz,
                this->mat_.row_offset+idx,
                2*sizeof(int),
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     int row_nnz = nnz[1] - nnz[0];
@@ -3630,7 +3631,7 @@ bool GPUAcceleratorMatrixCSR<ValueType>::ExtractRowVector(const int idx, BaseVec
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(row_nnz / this->local_backend_.GPU_block_size + 1);
 
-    kernel_csr_extract_row_vector<ValueType, int> <<<GridSize, BlockSize>>> (this->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_csr_extract_row_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, this->mat_.row_offset,
                                                                              this->mat_.col,
                                                                              this->mat_.val,
                                                                              row_nnz,

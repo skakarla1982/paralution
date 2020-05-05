@@ -39,8 +39,8 @@
 #include "../base_vector.hpp"
 #include "../matrix_formats.hpp"
 
-#include <cuda.h>
-#include <cusparse_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipsparse.h>
 
 namespace paralution {
 
@@ -173,9 +173,9 @@ private:
 
   cusparseSolveAnalysisInfo_t L_mat_info_;
   cusparseSolveAnalysisInfo_t U_mat_info_;
-  cusparseMatDescr_t L_mat_descr_;
-  cusparseMatDescr_t U_mat_descr_;
-  cusparseMatDescr_t mat_descr_;
+  hipsparseMatDescr_t L_mat_descr_;
+  hipsparseMatDescr_t U_mat_descr_;
+  hipsparseMatDescr_t mat_descr_;
 
   GPUAcceleratorVector<ValueType> *tmp_vec_;
 

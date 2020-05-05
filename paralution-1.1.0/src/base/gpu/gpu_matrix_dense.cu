@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -52,7 +53,7 @@
 #include "gpu_allocate_free.hpp"
 #include "../matrix_formats_ind.hpp"
 
-#include <cuda.h>
+#include <hip/hip_runtime.h>
 
 namespace paralution {
 
@@ -145,7 +146,7 @@ void GPUAcceleratorMatrixDENSE<ValueType>::SetDataPtrDENSE(ValueType **val, cons
 
   this->Clear();
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
 
   this->nrow_ = nrow;
   this->ncol_ = ncol;
@@ -163,7 +164,7 @@ void GPUAcceleratorMatrixDENSE<ValueType>::LeaveDataPtrDENSE(ValueType **val) {
   assert(this->nnz_ > 0);
   assert(this->nnz_  == this->nrow_*this->ncol_);
 
-  cudaDeviceSynchronize();
+  hipDeviceSynchronize();
 
   *val = this->mat_.val;
 
@@ -195,10 +196,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyFromHost(const HostMatrix<ValueTy
 
     if (this->get_nnz() > 0) {
 
-      cudaMemcpy(this->mat_.val,     // dst
+      hipMemcpy(this->mat_.val,     // dst
                  cast_mat->mat_.val, // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyHostToDevice);    
+                 hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -235,10 +236,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyToHost(HostMatrix<ValueType> *dst
 
     if (this->get_nnz() > 0) {
       
-      cudaMemcpy(cast_mat->mat_.val, // dst
+      hipMemcpy(cast_mat->mat_.val, // dst
                  this->mat_.val,     // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToHost);    
+                 hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -274,10 +275,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyFrom(const BaseMatrix<ValueType> 
 
     if (this->get_nnz() > 0) { 
 
-        cudaMemcpy(this->mat_.val,         // dst
+        hipMemcpy(this->mat_.val,         // dst
                    gpu_cast_mat->mat_.val, // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToDevice);    
+                   hipMemcpyDeviceToDevice);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
 
@@ -324,10 +325,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyTo(BaseMatrix<ValueType> *dst) co
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(gpu_cast_mat->mat_.val, // dst
+        hipMemcpy(gpu_cast_mat->mat_.val, // dst
                    this->mat_.val,         // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToHost);    
+                   hipMemcpyDeviceToHost);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
     
@@ -373,10 +374,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyFromHostAsync(const HostMatrix<Va
 
     if (this->get_nnz() > 0) {
 
-      cudaMemcpyAsync(this->mat_.val,     // dst
+      hipMemcpyAsync(this->mat_.val,     // dst
                       cast_mat->mat_.val, // src
                       this->get_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyHostToDevice);    
+                      hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -413,10 +414,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyToHostAsync(HostMatrix<ValueType>
 
     if (this->get_nnz() > 0) {
       
-      cudaMemcpyAsync(cast_mat->mat_.val, // dst
+      hipMemcpyAsync(cast_mat->mat_.val, // dst
                       this->mat_.val,     // src
                       this->get_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyDeviceToHost);    
+                      hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -452,10 +453,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyFromAsync(const BaseMatrix<ValueT
 
     if (this->get_nnz() > 0) { 
 
-      cudaMemcpy(this->mat_.val,         // dst
+      hipMemcpy(this->mat_.val,         // dst
                  gpu_cast_mat->mat_.val, // src
                  this->get_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
 
@@ -502,10 +503,10 @@ void GPUAcceleratorMatrixDENSE<ValueType>::CopyToAsync(BaseMatrix<ValueType> *ds
 
     if (this->get_nnz() > 0) {
 
-        cudaMemcpy(gpu_cast_mat->mat_.val, // dst
+        hipMemcpy(gpu_cast_mat->mat_.val, // dst
                    this->mat_.val,         // src
                    this->get_nnz()*sizeof(ValueType), // size
-                   cudaMemcpyDeviceToHost);    
+                   hipMemcpyDeviceToHost);    
         CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       }
     
@@ -586,14 +587,14 @@ void GPUAcceleratorMatrixDENSE<double>::Apply(const BaseVector<double> &in, Base
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
     const double alpha = double(1.0);
     const double beta  = double(0.0);
 
     if (DENSE_IND_BASE == 0) {
 
-      stat_t = cublasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N,
+      stat_t = hipblasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N,
                            this->get_nrow(), this->get_ncol(),
                            &alpha,
                            this->mat_.val, this->get_nrow(),
@@ -604,7 +605,7 @@ void GPUAcceleratorMatrixDENSE<double>::Apply(const BaseVector<double> &in, Base
 
     } else {
 
-      stat_t = cublasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T,
+      stat_t = hipblasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T,
                            this->get_ncol(), this->get_nrow(),
                            &alpha,
                            this->mat_.val, this->get_ncol(),
@@ -635,14 +636,14 @@ void GPUAcceleratorMatrixDENSE<float>::Apply(const BaseVector<float> &in, BaseVe
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
     const float alpha = float(1.0);
     const float beta  = float(0.0);
 
     if (DENSE_IND_BASE == 0) {
 
-      stat_t = cublasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N,
+      stat_t = hipblasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N,
                            this->get_nrow(), this->get_ncol(),
                            &alpha,
                            this->mat_.val, this->get_nrow(),
@@ -653,7 +654,7 @@ void GPUAcceleratorMatrixDENSE<float>::Apply(const BaseVector<float> &in, BaseVe
 
     } else {
 
-      stat_t = cublasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T,
+      stat_t = hipblasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T,
                            this->get_ncol(), this->get_nrow(),
                            &alpha,
                            this->mat_.val, this->get_ncol(),
@@ -685,14 +686,14 @@ void GPUAcceleratorMatrixDENSE<double>::ApplyAdd(const BaseVector<double> &in, c
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
     const double alpha = scalar;
     const double beta  = double(0.0);
 
     if (DENSE_IND_BASE == 0) {
 
-      stat_t = cublasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N,
+      stat_t = hipblasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N,
                            this->get_nrow(), this->get_ncol(),
                            &alpha,
                            this->mat_.val, this->get_nrow(),
@@ -703,7 +704,7 @@ void GPUAcceleratorMatrixDENSE<double>::ApplyAdd(const BaseVector<double> &in, c
 
     } else {
 
-      stat_t = cublasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T,
+      stat_t = hipblasDgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T,
                            this->get_ncol(), this->get_nrow(),
                            &alpha,
                            this->mat_.val, this->get_ncol(),
@@ -735,14 +736,14 @@ FATAL_ERROR(__FILE__, __LINE__);
     assert(cast_in != NULL);
     assert(cast_out!= NULL);
 
-    cublasStatus_t stat_t;
+    hipblasStatus_t stat_t;
 
     const float alpha = scalar;
     const float beta  = float(0.0);
 
     if (DENSE_IND_BASE == 0) {
 
-      stat_t = cublasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N,
+      stat_t = hipblasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N,
                            this->get_nrow(), this->get_ncol(),
                            &alpha,
                            this->mat_.val, this->get_nrow(),
@@ -753,7 +754,7 @@ FATAL_ERROR(__FILE__, __LINE__);
 
     } else {
 
-      stat_t = cublasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T,
+      stat_t = hipblasSgemv(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T,
                            this->get_ncol(), this->get_nrow(),
                            &alpha,
                            this->mat_.val, this->get_ncol(),
@@ -782,14 +783,14 @@ bool GPUAcceleratorMatrixDENSE<float>::MatMatMult(const BaseMatrix<float> &A, co
   assert(cast_mat_B != NULL);
   assert(cast_mat_A->ncol_ == cast_mat_B->nrow_);
 
-  cublasStatus_t stat_t;
+  hipblasStatus_t stat_t;
 
   const float alpha = float(1.0);
   const float beta  = float(0.0);
 
   if (DENSE_IND_BASE == 0) {
 
-    stat_t = cublasSgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N, CUBLAS_OP_N,
+    stat_t = hipblasSgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N, HIPBLAS_OP_N,
                          cast_mat_A->nrow_, cast_mat_B->ncol_, cast_mat_A->ncol_,
                          &alpha, cast_mat_A->mat_.val, cast_mat_A->nrow_,
                          cast_mat_B->mat_.val, cast_mat_A->ncol_, &beta,
@@ -799,7 +800,7 @@ bool GPUAcceleratorMatrixDENSE<float>::MatMatMult(const BaseMatrix<float> &A, co
 
   } else {
 
-    stat_t = cublasSgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T, CUBLAS_OP_T,
+    stat_t = hipblasSgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T, HIPBLAS_OP_T,
                          cast_mat_A->nrow_, cast_mat_B->ncol_, cast_mat_A->ncol_,
                          &alpha, cast_mat_A->mat_.val, cast_mat_A->ncol_,
                          cast_mat_B->mat_.val, cast_mat_B->ncol_, &beta,
@@ -827,14 +828,14 @@ bool GPUAcceleratorMatrixDENSE<double>::MatMatMult(const BaseMatrix<double> &A, 
   assert(cast_mat_B != NULL);
   assert(cast_mat_A->ncol_ == cast_mat_B->nrow_);
 
-  cublasStatus_t stat_t;
+  hipblasStatus_t stat_t;
 
   const double alpha = double(1.0);
   const double beta  = double(0.0);
 
   if (DENSE_IND_BASE == 0) {
 
-    stat_t = cublasDgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_N, CUBLAS_OP_N,
+    stat_t = hipblasDgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_N, HIPBLAS_OP_N,
                          cast_mat_A->nrow_, cast_mat_B->ncol_, cast_mat_A->ncol_,
                          &alpha, cast_mat_A->mat_.val, cast_mat_A->nrow_,
                          cast_mat_B->mat_.val, cast_mat_A->ncol_, &beta,
@@ -844,7 +845,7 @@ bool GPUAcceleratorMatrixDENSE<double>::MatMatMult(const BaseMatrix<double> &A, 
 
   } else {
 
-    stat_t = cublasDgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), CUBLAS_OP_T, CUBLAS_OP_T,
+    stat_t = hipblasDgemm(CUBLAS_HANDLE(this->local_backend_.GPU_cublas_handle), HIPBLAS_OP_T, HIPBLAS_OP_T,
                          cast_mat_A->nrow_, cast_mat_B->ncol_, cast_mat_A->ncol_,
                          &alpha, cast_mat_A->mat_.val, cast_mat_A->ncol_,
                          cast_mat_B->mat_.val, cast_mat_B->ncol_, &beta,
@@ -875,7 +876,7 @@ bool GPUAcceleratorMatrixDENSE<ValueType>::ReplaceColumnVector(const int idx, co
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_dense_replace_column_vector<ValueType, int> <<<GridSize, BlockSize>>>(cast_vec->vec_,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_dense_replace_column_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, cast_vec->vec_,
                                                                                  idx,
                                                                                  nrow,
                                                                                  ncol,
@@ -906,7 +907,7 @@ bool GPUAcceleratorMatrixDENSE<ValueType>::ReplaceRowVector(const int idx, const
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(ncol / this->local_backend_.GPU_block_size + 1);
 
-    kernel_dense_replace_row_vector<ValueType, int> <<<GridSize, BlockSize>>>(cast_vec->vec_,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_dense_replace_row_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, cast_vec->vec_,
                                                                               idx,
                                                                               nrow,
                                                                               ncol,
@@ -937,7 +938,7 @@ bool GPUAcceleratorMatrixDENSE<ValueType>::ExtractColumnVector(const int idx, Ba
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
 
-    kernel_dense_extract_column_vector<ValueType, int> <<<GridSize, BlockSize>>>(cast_vec->vec_,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_dense_extract_column_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, cast_vec->vec_,
                                                                                  idx,
                                                                                  nrow,
                                                                                  ncol,
@@ -968,7 +969,7 @@ bool GPUAcceleratorMatrixDENSE<ValueType>::ExtractRowVector(const int idx, BaseV
     dim3 BlockSize(this->local_backend_.GPU_block_size);
     dim3 GridSize(ncol / this->local_backend_.GPU_block_size + 1);
 
-    kernel_dense_extract_row_vector<ValueType, int> <<<GridSize, BlockSize>>>(cast_vec->vec_,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_dense_extract_row_vector<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, cast_vec->vec_,
                                                                               idx,
                                                                               nrow,
                                                                               ncol,

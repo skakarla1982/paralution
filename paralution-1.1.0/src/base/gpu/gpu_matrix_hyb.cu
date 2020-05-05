@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 // **************************************************************************
 //
 //    PARALUTION   www.paralution.com
@@ -52,8 +53,8 @@
 
 #include <algorithm>
 
-#include <cuda.h>
-#include <cusparse_v2.h>
+#include <hip/hip_runtime.h>
+#include <hipsparse.h>
 
 namespace paralution {
 
@@ -211,38 +212,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyFromHost(const HostMatrix<ValueType
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpy(this->mat_.ELL.col,     // dst
+      hipMemcpy(this->mat_.ELL.col,     // dst
                  cast_mat->mat_.ELL.col, // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.ELL.val,     // dst
+      hipMemcpy(this->mat_.ELL.val,     // dst
                  cast_mat->mat_.ELL.val, // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyHostToDevice);    
+                 hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(this->mat_.COO.row,     // dst
+      hipMemcpy(this->mat_.COO.row,     // dst
                  cast_mat->mat_.COO.row, // src
                  (this->get_coo_nnz())*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.col,     // dst
+      hipMemcpy(this->mat_.COO.col,     // dst
                  cast_mat->mat_.COO.col, // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyHostToDevice);
+                 hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.val,     // dst
+      hipMemcpy(this->mat_.COO.val,     // dst
                  cast_mat->mat_.COO.val, // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyHostToDevice);    
+                 hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -281,16 +282,16 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyToHost(HostMatrix<ValueType> *dst) 
     if (this->get_ell_nnz() > 0) {
       
       // ELL
-      cudaMemcpy(cast_mat->mat_.ELL.col, // dst
+      hipMemcpy(cast_mat->mat_.ELL.col, // dst
                  this->mat_.ELL.col,     // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(cast_mat->mat_.ELL.val, // dst
+      hipMemcpy(cast_mat->mat_.ELL.val, // dst
                  this->mat_.ELL.val,     // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToHost);    
+                 hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
@@ -298,22 +299,22 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyToHost(HostMatrix<ValueType> *dst) 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(cast_mat->mat_.COO.row, // dst
+      hipMemcpy(cast_mat->mat_.COO.row, // dst
                  this->mat_.COO.row,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(cast_mat->mat_.COO.col, // dst
+      hipMemcpy(cast_mat->mat_.COO.col, // dst
                  this->mat_.COO.col,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToHost);
+                 hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(cast_mat->mat_.COO.val, // dst
+      hipMemcpy(cast_mat->mat_.COO.val, // dst
                  this->mat_.COO.val,     // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToHost);    
+                 hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
     }
@@ -353,38 +354,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyFrom(const BaseMatrix<ValueType> &s
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpy(this->mat_.ELL.col,     // dst
+      hipMemcpy(this->mat_.ELL.col,     // dst
                  gpu_cast_mat->mat_.ELL.col, // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.ELL.val,     // dst
+      hipMemcpy(this->mat_.ELL.val,     // dst
                  gpu_cast_mat->mat_.ELL.val, // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(this->mat_.COO.row,     // dst
+      hipMemcpy(this->mat_.COO.row,     // dst
                  gpu_cast_mat->mat_.COO.row, // src
                  (this->get_coo_nnz())*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.col,     // dst
+      hipMemcpy(this->mat_.COO.col,     // dst
                  gpu_cast_mat->mat_.COO.col, // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.val,     // dst
+      hipMemcpy(this->mat_.COO.val,     // dst
                  gpu_cast_mat->mat_.COO.val, // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
 
     }
@@ -434,38 +435,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyTo(BaseMatrix<ValueType> *dst) cons
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpy(gpu_cast_mat->mat_.ELL.col, // dst
+      hipMemcpy(gpu_cast_mat->mat_.ELL.col, // dst
                  this->mat_.ELL.col,     // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.ELL.val, // dst
+      hipMemcpy(gpu_cast_mat->mat_.ELL.val, // dst
                  this->mat_.ELL.val,     // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(gpu_cast_mat->mat_.COO.row, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.row, // dst
                  this->mat_.COO.row,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.COO.col, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.col, // dst
                  this->mat_.COO.col,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.COO.val, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.val, // dst
                  this->mat_.COO.val,     // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
 
     }
@@ -515,38 +516,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyFromHostAsync(const HostMatrix<Valu
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpyAsync(this->mat_.ELL.col,     // dst
+      hipMemcpyAsync(this->mat_.ELL.col,     // dst
                       cast_mat->mat_.ELL.col, // src
                       this->get_ell_nnz()*sizeof(int), // size
-                      cudaMemcpyHostToDevice);
+                      hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(this->mat_.ELL.val,     // dst
+      hipMemcpyAsync(this->mat_.ELL.val,     // dst
                       cast_mat->mat_.ELL.val, // src
                       this->get_ell_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyHostToDevice);    
+                      hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpyAsync(this->mat_.COO.row,     // dst
+      hipMemcpyAsync(this->mat_.COO.row,     // dst
                       cast_mat->mat_.COO.row, // src
                       (this->get_coo_nnz())*sizeof(int), // size
-                      cudaMemcpyHostToDevice);
+                      hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(this->mat_.COO.col,     // dst
+      hipMemcpyAsync(this->mat_.COO.col,     // dst
                       cast_mat->mat_.COO.col, // src
                       this->get_coo_nnz()*sizeof(int), // size
-                      cudaMemcpyHostToDevice);
+                      hipMemcpyHostToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(this->mat_.COO.val,     // dst
+      hipMemcpyAsync(this->mat_.COO.val,     // dst
                       cast_mat->mat_.COO.val, // src
                       this->get_coo_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyHostToDevice);    
+                      hipMemcpyHostToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
     
@@ -585,16 +586,16 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyToHostAsync(HostMatrix<ValueType> *
     if (this->get_ell_nnz() > 0) {
       
       // ELL
-      cudaMemcpyAsync(cast_mat->mat_.ELL.col, // dst
+      hipMemcpyAsync(cast_mat->mat_.ELL.col, // dst
                       this->mat_.ELL.col,     // src
                       this->get_ell_nnz()*sizeof(int), // size
-                      cudaMemcpyDeviceToHost);
+                      hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(cast_mat->mat_.ELL.val, // dst
+      hipMemcpyAsync(cast_mat->mat_.ELL.val, // dst
                       this->mat_.ELL.val,     // src
                       this->get_ell_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyDeviceToHost);    
+                      hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
@@ -602,22 +603,22 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyToHostAsync(HostMatrix<ValueType> *
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpyAsync(cast_mat->mat_.COO.row, // dst
+      hipMemcpyAsync(cast_mat->mat_.COO.row, // dst
                       this->mat_.COO.row,     // src
                       this->get_coo_nnz()*sizeof(int), // size
-                      cudaMemcpyDeviceToHost);
+                      hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(cast_mat->mat_.COO.col, // dst
+      hipMemcpyAsync(cast_mat->mat_.COO.col, // dst
                       this->mat_.COO.col,     // src
                       this->get_coo_nnz()*sizeof(int), // size
-                      cudaMemcpyDeviceToHost);
+                      hipMemcpyDeviceToHost);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpyAsync(cast_mat->mat_.COO.val, // dst
+      hipMemcpyAsync(cast_mat->mat_.COO.val, // dst
                       this->mat_.COO.val,     // src
                       this->get_coo_nnz()*sizeof(ValueType), // size
-                      cudaMemcpyDeviceToHost);    
+                      hipMemcpyDeviceToHost);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
     }
@@ -657,38 +658,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyFromAsync(const BaseMatrix<ValueTyp
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpy(this->mat_.ELL.col,     // dst
+      hipMemcpy(this->mat_.ELL.col,     // dst
                  gpu_cast_mat->mat_.ELL.col, // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.ELL.val,     // dst
+      hipMemcpy(this->mat_.ELL.val,     // dst
                  gpu_cast_mat->mat_.ELL.val, // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(this->mat_.COO.row,     // dst
+      hipMemcpy(this->mat_.COO.row,     // dst
                  gpu_cast_mat->mat_.COO.row, // src
                  (this->get_coo_nnz())*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.col,     // dst
+      hipMemcpy(this->mat_.COO.col,     // dst
                  gpu_cast_mat->mat_.COO.col, // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(this->mat_.COO.val,     // dst
+      hipMemcpy(this->mat_.COO.val,     // dst
                  gpu_cast_mat->mat_.COO.val, // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
 
     }
@@ -738,38 +739,38 @@ void GPUAcceleratorMatrixHYB<ValueType>::CopyToAsync(BaseMatrix<ValueType> *dst)
     if (this->get_ell_nnz() > 0) {
 
       // ELL
-      cudaMemcpy(gpu_cast_mat->mat_.ELL.col, // dst
+      hipMemcpy(gpu_cast_mat->mat_.ELL.col, // dst
                  this->mat_.ELL.col,     // src
                  this->get_ell_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.ELL.val, // dst
+      hipMemcpy(gpu_cast_mat->mat_.ELL.val, // dst
                  this->mat_.ELL.val,     // src
                  this->get_ell_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
     }
 
     if (this->get_coo_nnz() > 0) {
 
       // COO
-      cudaMemcpy(gpu_cast_mat->mat_.COO.row, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.row, // dst
                  this->mat_.COO.row,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.COO.col, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.col, // dst
                  this->mat_.COO.col,     // src
                  this->get_coo_nnz()*sizeof(int), // size
-                 cudaMemcpyDeviceToDevice);
+                 hipMemcpyDeviceToDevice);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      cudaMemcpy(gpu_cast_mat->mat_.COO.val, // dst
+      hipMemcpy(gpu_cast_mat->mat_.COO.val, // dst
                  this->mat_.COO.val,     // src
                  this->get_coo_nnz()*sizeof(ValueType), // size
-                 cudaMemcpyDeviceToDevice);    
+                 hipMemcpyDeviceToDevice);    
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
 
     }
@@ -832,7 +833,7 @@ bool GPUAcceleratorMatrixHYB<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
 
     allocate_gpu<int>(nrow, &nnz_coo);
 
-    kernel_ell_nnz_coo<int> <<<GridSize, BlockSize>>> (nrow, max_row,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_ell_nnz_coo<int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, max_row,
                                                        cast_mat_csr->mat_.row_offset,
                                                        nnz_coo);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
@@ -852,16 +853,16 @@ bool GPUAcceleratorMatrixHYB<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
                  / this->local_backend_.GPU_block_size ) + 1 ) * this->local_backend_.GPU_block_size;
     LOCAL_SIZE = GROUP_SIZE / this->local_backend_.GPU_block_size;
 
-    kernel_reduce<int, int, 256> <<<GridSize2, BlockSize>>> (nrow, nnz_coo, d_buffer, GROUP_SIZE, LOCAL_SIZE);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_reduce<int, int, 256>), dim3(GridSize2), dim3(BlockSize), 0, 0, nrow, nnz_coo, d_buffer, GROUP_SIZE, LOCAL_SIZE);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     FinalReduceSize = this->local_backend_.GPU_warp * 4;
     allocate_host(FinalReduceSize, &h_buffer);
 
-    cudaMemcpy(h_buffer, // dst
+    hipMemcpy(h_buffer, // dst
                d_buffer, // src
                FinalReduceSize*sizeof(int), // size
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     free_gpu<int>(&d_buffer);
@@ -882,7 +883,7 @@ bool GPUAcceleratorMatrixHYB<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
 
     this->AllocateHYB(num_nnz_ell, num_nnz_coo, max_row, nrow, ncol);
 
-    cudaMemset(this->mat_.ELL.col, -1, num_nnz_ell*sizeof(int));
+    hipMemset(this->mat_.ELL.col, -1, num_nnz_ell*sizeof(int));
     CHECK_CUDA_ERROR(__FILE__, __LINE__);
 
     // copy up to num_cols_per_row values of row i into the ELL
@@ -890,7 +891,7 @@ bool GPUAcceleratorMatrixHYB<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
 
     allocate_gpu<int>(nrow, &nnz_ell);
 
-    kernel_ell_fill_ell<ValueType, int> <<<GridSize, BlockSize>>> (nrow, max_row,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_ell_fill_ell<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, max_row,
                                                                    cast_mat_csr->mat_.row_offset,
                                                                    cast_mat_csr->mat_.col,
                                                                    cast_mat_csr->mat_.val,
@@ -901,25 +902,25 @@ bool GPUAcceleratorMatrixHYB<ValueType>::ConvertFrom(const BaseMatrix<ValueType>
 
     // TODO currently performing partial sum on host
     allocate_host(nrow, &h_buffer);
-    cudaMemcpy(h_buffer, // dst
+    hipMemcpy(h_buffer, // dst
                nnz_ell, // src
                nrow*sizeof(int), // size
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
 
     for (int i=1; i<nrow; ++i)
       h_buffer[i] += h_buffer[i-1];
 
-    cudaMemcpy(nnz_ell, // dst
+    hipMemcpy(nnz_ell, // dst
                h_buffer, // src
                nrow*sizeof(int), // size
-               cudaMemcpyHostToDevice);
+               hipMemcpyHostToDevice);
 
     free_host(&h_buffer);
     // end TODO
 
     // copy any remaining values in row i into the COO
 
-    kernel_ell_fill_coo<ValueType, int> <<<GridSize, BlockSize>>> (nrow, cast_mat_csr->mat_.row_offset,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_ell_fill_coo<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, cast_mat_csr->mat_.row_offset,
                                                                    cast_mat_csr->mat_.col,
                                                                    cast_mat_csr->mat_.val,
                                                                    nnz_coo, nnz_ell,
@@ -973,7 +974,7 @@ void GPUAcceleratorMatrixHYB<ValueType>::Apply(const BaseVector<ValueType> &in, 
       dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
     
       
-      kernel_ell_spmv<ValueType, int> <<<GridSize, BlockSize>>> (nrow, ncol, max_row,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_ell_spmv<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, ncol, max_row,
                                                                  this->mat_.ELL.col, this->mat_.ELL.val,
                                                                  cast_in->vec_, cast_out->vec_ );
       
@@ -1029,8 +1030,7 @@ void GPUAcceleratorMatrixHYB<ValueType>::Apply(const BaseVector<ValueType> &in, 
       // TODO 
       // BLOCK_SIZE == 256 
       // WARP_SIZE == 32
-      kernel_spmv_coo_flat<int, ValueType, 256, 32> <<<num_blocks, BLOCK_SIZE>>>
-        (tail, interval_size, 
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_flat<int, ValueType, 256, 32>), dim3(num_blocks), dim3(BLOCK_SIZE), 0, 0, tail, interval_size, 
          this->mat_.COO.row, this->mat_.COO.col, this->mat_.COO.val, 
          ValueType(1.0),
          cast_in->vec_, cast_out->vec_,
@@ -1039,12 +1039,10 @@ void GPUAcceleratorMatrixHYB<ValueType>::Apply(const BaseVector<ValueType> &in, 
       
       // TODO 
       // BLOCK_SIZE == 256 
-      kernel_spmv_coo_reduce_update<int, ValueType, 256> <<<1, BLOCK_SIZE>>>
-        (active_warps, temp_rows, temp_vals, cast_out->vec_);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_reduce_update<int, ValueType, 256>), dim3(1), dim3(BLOCK_SIZE), 0, 0, active_warps, temp_rows, temp_vals, cast_out->vec_);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      kernel_spmv_coo_serial<int, ValueType> <<<1,1>>>
-        (this->get_coo_nnz() - tail, 
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_serial<int, ValueType>), dim3(1), dim3(1), 0, 0, this->get_coo_nnz() - tail, 
          this->mat_.COO.row + tail, 
          this->mat_.COO.col + tail, 
          this->mat_.COO.val + tail, 
@@ -1090,7 +1088,7 @@ void GPUAcceleratorMatrixHYB<ValueType>::ApplyAdd(const BaseVector<ValueType> &i
       dim3 GridSize(nrow / this->local_backend_.GPU_block_size + 1);
     
       
-      kernel_ell_add_spmv<ValueType, int> <<<GridSize, BlockSize>>> (nrow, ncol, max_row,
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_ell_add_spmv<ValueType, int>), dim3(GridSize), dim3(BlockSize), 0, 0, nrow, ncol, max_row,
                                                                      this->mat_.ELL.col, this->mat_.ELL.val,
                                                                      scalar,
                                                                      cast_in->vec_, cast_out->vec_ );
@@ -1147,8 +1145,7 @@ void GPUAcceleratorMatrixHYB<ValueType>::ApplyAdd(const BaseVector<ValueType> &i
       // TODO 
       // BLOCK_SIZE == 256 
       // WARP_SIZE == 32
-      kernel_spmv_coo_flat<int, ValueType, 256, 32> <<<num_blocks, BLOCK_SIZE>>>
-        (tail, interval_size, 
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_flat<int, ValueType, 256, 32>), dim3(num_blocks), dim3(BLOCK_SIZE), 0, 0, tail, interval_size, 
          this->mat_.COO.row, this->mat_.COO.col, this->mat_.COO.val, 
          scalar,
          cast_in->vec_, cast_out->vec_,
@@ -1157,12 +1154,10 @@ void GPUAcceleratorMatrixHYB<ValueType>::ApplyAdd(const BaseVector<ValueType> &i
       
       // TODO 
       // BLOCK_SIZE == 256 
-      kernel_spmv_coo_reduce_update<int, ValueType, 256> <<<1, BLOCK_SIZE>>>
-        (active_warps, temp_rows, temp_vals, cast_out->vec_);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_reduce_update<int, ValueType, 256>), dim3(1), dim3(BLOCK_SIZE), 0, 0, active_warps, temp_rows, temp_vals, cast_out->vec_);
       CHECK_CUDA_ERROR(__FILE__, __LINE__);     
       
-      kernel_spmv_coo_serial<int, ValueType> <<<1,1>>>
-        (this->get_coo_nnz() - tail, 
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(kernel_spmv_coo_serial<int, ValueType>), dim3(1), dim3(1), 0, 0, this->get_coo_nnz() - tail, 
          this->mat_.COO.row + tail, 
          this->mat_.COO.col + tail, 
          this->mat_.COO.val + tail, 
