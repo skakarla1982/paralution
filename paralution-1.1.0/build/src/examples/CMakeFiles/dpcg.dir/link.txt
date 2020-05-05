@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -Wall -fPIC -fopenmp      -rdynamic CMakeFiles/dpcg.dir/dpcg.cpp.o  -o ../../bin/dpcg -Wl,-rpath,/paralution/paralution-1.1.0/build/lib ../../lib/libparalution.so 

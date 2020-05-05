@@ -29,6 +29,63 @@
 
 
 # PARALUTION version 1.1.0 
+# Srinivas K
+macro(HIP_COMPILE generated_files)
+  hip_compile_base(hip_compile OBJ ${generated_files} ${ARGN})
+endmacro()
+
+macro(HIP_GET_SOURCES_AND_OPTIONS _sources _cmake_options _options)
+  set( ${_sources} )
+  set( ${_cmake_options} )
+  set( ${_options} )
+  set( _found_options FALSE )
+  foreach(arg ${ARGN})
+    if("x${arg}" STREQUAL "xOPTIONS")
+      set( _found_options TRUE )
+    elseif(
+        "x${arg}" STREQUAL "xWIN32" OR
+        "x${arg}" STREQUAL "xMACOSX_BUNDLE" OR
+        "x${arg}" STREQUAL "xEXCLUDE_FROM_ALL" OR
+        "x${arg}" STREQUAL "xSTATIC" OR
+        "x${arg}" STREQUAL "xSHARED" OR
+        "x${arg}" STREQUAL "xMODULE"
+        )
+      list(APPEND ${_cmake_options} ${arg})
+    else()
+      if ( _found_options )
+        list(APPEND ${_options} ${arg})
+      else()
+        # Assume this is a file
+        list(APPEND ${_sources} ${arg})
+      endif()
+    endif()
+  endforeach()
+endmacro()
+
+macro(hip_compile_base hip_target format generated_files)
+  # Update a counter in this directory, to keep phony target names unique.
+  set(_hip_target "${hip_target}")
+  get_property(_counter DIRECTORY PROPERTY _hip_internal_phony_counter)
+  if(_counter)
+    math(EXPR _counter "${_counter} + 1")
+  else()
+    set(_counter 1)
+  endif()
+  string(APPEND _hip_target "_${_counter}")
+  set_property(DIRECTORY PROPERTY _hip_internal_phony_counter ${_counter})
+
+  # Separate the sources from the options
+  HIP_GET_SOURCES_AND_OPTIONS(_sources _cmake_options _options ${ARGN})
+
+  # Create custom commands and targets for each file.
+  #HIP_WRAP_SRCS( ${_hip_target} ${format} _generated_files ${_sources}
+  #                ${_cmake_options} OPTIONS ${_options} PHONY)
+
+  set( ${generated_files} ${_generated_files})
+
+endmacro()
+
+# Srinivas K
 
 
 set(PARALUTION_SOURCES)
@@ -97,6 +154,19 @@ if (SUPPORT_CUDA)
   endforeach()
 endif()
 
+# Srinivas K
+if (SUPPORT_HIP)
+  foreach(i ${PARALUTION_SOURCES})
+
+    if (${i} MATCHES ".cu")
+            HIP_COMPILE(cu ${i})
+      list(REMOVE_ITEM PARALUTION_SOURCES ${i})
+      list(APPEND PARALUTION_SOURCES ${cu})
+    endif()
+
+  endforeach()
+endif()
+
 # Create paralution library
 if (SUPPORT_MIC)
   SET(CMAKE_AR "xiar")
@@ -113,6 +183,12 @@ add_library(${PARALUTION_LIBRARY} ${LIBRARY_TYPE} ${PARALUTION_SOURCES})
 if (SUPPORT_CUDA)
   target_link_libraries(${PARALUTION_LIBRARY} ${CUDA_LIBRARIES} ${CUDA_cusparse_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
 endif()
+
+if (SUPPORT_HIP)
+        SET(HIP_LIBRARIES "-L/opt/rocm/lib -lhip_hcc -lhipblas -lhipsparse")
+        target_link_libraries(${PARALUTION_LIBRARY} ${HIP_LIBRARIES})
+endif()
+
 
 if (SUPPORT_OCL)
   target_link_libraries(${PARALUTION_LIBRARY} ${OPENCL_LIBRARIES})

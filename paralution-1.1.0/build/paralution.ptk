@@ -1,0 +1,14 @@
+<paralution.pc>
+prefix=/paralution/paralution-1.1.0/build
+exec_prefix=/paralution/paralution-1.1.0/build
+libdir=/paralution/paralution-1.1.0/build/lib
+includedir=/paralution/paralution-1.1.0/build/inc
+
+Name: libparalution
+Description: PARALUTION
+Version: 1.1.0
+Requires:
+Libs: -L/paralution/paralution-1.1.0/build/lib -lparalution
+Libs.private:
+Cflags: -I/paralution/paralution-1.1.0/build/inc
+</paralution.pc>

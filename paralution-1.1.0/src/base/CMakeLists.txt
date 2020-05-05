@@ -79,6 +79,18 @@ if (SUPPORT_CUDA)
     list(APPEND BASE_PUBLIC_HEADERS gpu/${i})
   endforeach()
 endif()
+ 
+
+if (SUPPORT_HIP)
+  include(base/gpu/CMakeLists.txt)
+  foreach(i ${GPU_SOURCES})
+    list(APPEND BASE_SOURCES gpu/${i})
+  endforeach()
+
+  foreach(i ${GPU_PUBLIC_HEADERS})
+    list(APPEND BASE_PUBLIC_HEADERS gpu/${i})
+  endforeach()
+endif()
 
 if (SUPPORT_OCL)
   include(base/ocl/CMakeLists.txt)

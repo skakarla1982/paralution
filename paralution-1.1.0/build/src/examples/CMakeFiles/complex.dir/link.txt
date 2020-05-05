@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -Wall -fPIC -fopenmp      -rdynamic CMakeFiles/complex.dir/complex.cpp.o  -o ../../bin/complex -Wl,-rpath,/paralution/paralution-1.1.0/build/lib ../../lib/libparalution.so 

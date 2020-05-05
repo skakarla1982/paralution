@@ -107,6 +107,21 @@ else()
   endif()
 endif()
 
+# HIP
+set(CMAKE_MODULE_PATH "/opt/rocm/hip/cmake" ${CMAKE_MODULE_PATH})
+
+find_package(HIP)
+if(NOT DEFINED HIP_PATH)
+
+    if(NOT DEFINED ENV{HIP_PATH})
+        set(HIP_PATH "/opt/rocm/hip" CACHE PATH "Path to which HIP has been installed")
+    else()
+        set(HIP_PATH $ENV{HIP_PATH} CACHE PATH "Path to which HIP has been installed")
+        set(HIP_FLAGS "${HIP_FLAGS} -O3 -arch amd-gpu-target=gfx906  --compiler-options -Wall")
+        set(HIP_CXX_FLAGS -DSUPPORT_HIP)
+    endif()
+endif()
+
 #######################################################################################################################
 # OpenCL - only compile OpenCL when CUDA is not picked
 find_package(OpenCL)
